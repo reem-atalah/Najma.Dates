@@ -69,6 +69,24 @@ function respondJson(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
+function getAllowedOrigin(origin) {
+  if (!origin) return null;
+  let parsedOrigin;
+  try {
+    parsedOrigin = new URL(origin);
+  } catch {
+    return null;
+  }
+  if (parsedOrigin.protocol === 'https:' && parsedOrigin.hostname.endsWith('.pages.dev')) {
+    return origin;
+  }
+  const configuredOrigins = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return configuredOrigins.includes(origin) ? origin : null;
+}
+
 function readRequestBody(request) {
   return new Promise((resolve, reject) => {
     let body = '';
@@ -320,6 +338,23 @@ function createServer({ sendMail: sendMailOverride } = {}) {
   return http.createServer(async (request, response) => {
     const requestUrl = new URL(request.url, 'http://localhost');
     if (requestUrl.pathname === '/api/orders' || requestUrl.pathname === '/api/contact') {
+      const origin = request.headers.origin;
+      const allowedOrigin = getAllowedOrigin(origin);
+      if (origin && !allowedOrigin) {
+        respondJson(response, 403, { error: 'This website is not allowed to use the order service.' });
+        return;
+      }
+      if (allowedOrigin) {
+        response.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+        response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+        response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        response.setHeader('Vary', 'Origin');
+      }
+      if (request.method === 'OPTIONS') {
+        response.writeHead(204, { 'Cache-Control': 'no-store' });
+        response.end();
+        return;
+      }
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
         respondJson(response, 405, { error: 'Method not allowed.' });

@@ -14,6 +14,7 @@ const cartSummary = document.querySelector('.cart-summary');
 const toast = document.querySelector('.toast');
 const cart = [];
 const currencyFormatter = new Intl.NumberFormat('ar-EG');
+const API_BASE_URL = 'https://najma-dates-4mry.onrender.com';
 let originalPageTitle = document.title;
 const arabicGlossaryPattern = /(^|[^\u0621-\u064A])((?:وبال|وفال|وكال|ولل|وال|بال|فال|كال|لل|وب|وف|وك|ول|و|ف|ب|ك|ل)?(?:ال)?(?:تمر|تمور|مجدول|سيوي))(?=$|[^\u0621-\u064A])/g;
 const productCatalog = window.productCatalog;
@@ -761,7 +762,7 @@ orderForm.addEventListener('submit', async (event) => {
   try {
     let response;
     try {
-      response = await fetch('/api/orders', {
+      response = await fetch(`${API_BASE_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -844,7 +845,7 @@ if (contactForm) {
     submitButton.disabled = true;
     status.textContent = 'جارٍ إرسال رسالتكم…';
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch(`${API_BASE_URL}/api/contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
