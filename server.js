@@ -3,12 +3,38 @@ const http = require('node:http');
 const path = require('node:path');
 const nodemailer = require('nodemailer');
 const productCatalog = require('./product-catalog');
+const shipping = require('./shipping-rates');
 
 const root = __dirname;
-const emailSender = 'najma.dates@gmail.com';
+
+function loadEnvFile() {
+  let contents;
+  try {
+    contents = fs.readFileSync(path.join(root, '.env'), 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+
+  contents.split(/\r?\n/).forEach((line) => {
+    const entry = line.trim();
+    if (!entry || entry.startsWith('#')) return;
+    const match = entry.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!match || process.env[match[1]] !== undefined) return;
+    let value = match[2].trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    process.env[match[1]] = value;
+  });
+}
+
+loadEnvFile();
+
+const emailSender = 'reem.atalah1@gmail.com';
 const emailRecipients = [
   'yousefera2@gmail.com',
-  'reem.attallah1@gmail.com',
+  'reem.atalah1@gmail.com',
   'emadatala@yahoo.com',
   'workraghoda@gmail.com',
   'nadaatala1345@gmail.com'
@@ -17,8 +43,8 @@ const contactTopics = ['استفسار عن طلب', 'استفسار عن منت
 const productPrices = new Map(Object.values(productCatalog).map((product) => {
   const options = product.options
     ? product.options.flatMap((option) => option.children || [option])
-    : [{ label: '', price: product.price }];
-  return [product.name, new Map(options.map((option) => [option.label, option.price]))];
+    : [{ label: '', price: product.price, weightGrams: product.weightGrams }];
+  return [product.name, new Map(options.map((option) => [option.label, option]))];
 }));
 const mimeTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -92,12 +118,10 @@ function validateOrder(payload) {
     throw new TypeError('Phone number is invalid.');
   }
   const address = cleanText(payload.address, 'Address', 240);
+  const region = cleanText(payload.region, 'Delivery region', 40);
+  const selectedRegion = shipping.regions[region];
+  if (!selectedRegion) throw new TypeError('Delivery region is invalid.');
   const note = cleanText(payload.note || '', 'Note', 160, false);
-  const amount = Number(payload.amount);
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) {
-    throw new TypeError('Requested amount is invalid.');
-  }
-  if (!['kg', 'g'].includes(payload.unit)) throw new TypeError('Requested unit is invalid.');
   if (!Array.isArray(payload.items) || payload.items.length < 1 || payload.items.length > 10) {
     throw new TypeError('Cart contents are invalid.');
   }
@@ -106,23 +130,32 @@ function validateOrder(payload) {
     if (!item || typeof item !== 'object') throw new TypeError('Cart item is invalid.');
     const itemName = cleanText(item.name, 'Product', 80);
     const variant = cleanText(item.variant || '', 'Option', 80, false);
-    const price = productPrices.get(itemName)?.get(variant);
-    if (price === undefined || item.price !== price) throw new TypeError('Product option or price is invalid.');
+    const option = productPrices.get(itemName)?.get(variant);
+    if (!option || item.price !== option.price) throw new TypeError('Product option or price is invalid.');
+    if (!Number.isInteger(option.weightGrams) || option.weightGrams < 1) {
+      throw new TypeError('Product weight is not configured.');
+    }
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) {
       throw new TypeError('Product quantity is invalid.');
     }
-    return { name: itemName, variant, price, quantity: item.quantity };
+    return { name: itemName, variant, price: option.price, weightGrams: option.weightGrams, quantity: item.quantity };
   });
 
+  const weightGrams = items.reduce((sum, item) => sum + item.weightGrams * item.quantity, 0);
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const shippingFee = shipping.calculateShipping(region, weightGrams, subtotal);
   return {
     name,
     phone,
     address,
+    region,
+    regionLabel: selectedRegion.label,
     note,
-    amount,
-    unit: payload.unit,
     items,
-    total: items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    weightGrams,
+    subtotal,
+    shippingFee,
+    total: subtotal + shippingFee
   };
 }
 
@@ -141,20 +174,26 @@ function validateContact(payload) {
 }
 
 function getMailConfig() {
-  const username = process.env.SMTP_USER;
-  const password = process.env.SMTP_APP_PASSWORD;
+  const username = process.env.SMTP_USER || process.env.MAIL_USERNAME;
+  const password = process.env.SMTP_APP_PASSWORD || process.env.MAIL_PASSWORD;
   if (username !== emailSender || !password) return null;
-  return { username, password };
+  const port = Number(process.env.SMTP_PORT || process.env.MAIL_PORT) || 587;
+  const host = process.env.SMTP_HOST || process.env.MAIL_SERVER || 'smtp.gmail.com';
+  return { username, password, host, port };
 }
 
 let mailTransport;
-let mailTransportPassword;
+let mailTransportSettings;
 function getMailTransport(config) {
-  if (!mailTransport || mailTransportPassword !== config.password) {
+  const settings = `${config.username}:${config.password}:${config.host}:${config.port}`;
+  if (!mailTransport || mailTransportSettings !== settings) {
     mailTransport = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      host: config.host,
+      port: config.port,
+      secure: config.port === 465,
+      requireTLS: config.port !== 465,
+      // Bind through IPv4 so Nodemailer does not choose an unreachable IPv6 route.
+      localAddress: process.env.SMTP_LOCAL_ADDRESS || '0.0.0.0',
       auth: { user: config.username, pass: config.password },
       connectionTimeout: 10000,
       greetingTimeout: 10000,
@@ -162,9 +201,22 @@ function getMailTransport(config) {
       disableFileAccess: true,
       disableUrlAccess: true
     });
-    mailTransportPassword = config.password;
+    mailTransportSettings = settings;
   }
   return mailTransport;
+}
+
+function describeMailError(error, depth = 0) {
+  if (!error || depth > 2) return undefined;
+  const details = {};
+  for (const key of ['name', 'message', 'code', 'command', 'errno', 'syscall', 'address', 'port', 'responseCode', 'response', 'stack']) {
+    if (error[key] !== undefined) details[key] = error[key];
+  }
+  if (error.cause) details.cause = describeMailError(error.cause, depth + 1);
+  if (Array.isArray(error.errors)) {
+    details.errors = error.errors.slice(0, 3).map((nestedError) => describeMailError(nestedError, depth + 1));
+  }
+  return details;
 }
 
 function isRateLimited(ipAddress) {
@@ -208,7 +260,7 @@ async function handleMailRequest(request, response, sendMail, createMessage) {
       respondJson(response, error.status, { error: error.message });
       return;
     }
-    console.error('Email delivery failed.', { code: error.code || 'unknown' });
+    console.error('Email delivery failed.', JSON.stringify(describeMailError(error)));
     respondJson(response, 502, { error: 'Email delivery failed. Please try again later.' });
   }
 }
@@ -234,11 +286,14 @@ function createServer({ sendMail: sendMailOverride } = {}) {
         'طلب جديد من متجر نجمة التمور',
         `الاسم: ${order.name}`,
         `الهاتف: ${order.phone}`,
+        `منطقة التوصيل: ${order.regionLabel}`,
         `العنوان: ${order.address}`,
-        `الكمية المطلوبة: ${order.amount} ${order.unit === 'kg' ? 'كجم' : 'جم'}`,
+        `وزن الطلب: ${(order.weightGrams / 1000).toLocaleString('ar-EG')} كجم`,
         'المنتجات:',
         products,
-        `الإجمالي: ${order.total} جنيه`,
+        `قيمة المنتجات: ${order.subtotal} جنيه`,
+        `الشحن: ${order.shippingFee === 0 ? 'مجاني' : `${order.shippingFee} جنيه`}`,
+        `الإجمالي شامل الشحن: ${order.total} جنيه`,
         order.note ? `ملاحظة: ${order.note}` : ''
       ].filter(Boolean).join('\n')
     };

@@ -96,7 +96,15 @@ function renderSearchResults(query) {
 
 function getProductOption(product, label) {
   return product.options?.flatMap((option) => option.children || [option])
-    .find((option) => option.label === label);
+    .find((option) => option.label === label || option.legacyLabels?.includes(label));
+}
+
+function getCartWeightGrams() {
+  return cart.reduce((total, item) => {
+    const product = Object.values(productCatalog).find((candidate) => candidate.name === item.name);
+    const option = product && getProductOption(product, item.variant || '');
+    return total + (option?.weightGrams || product?.weightGrams || 0) * item.quantity;
+  }, 0);
 }
 
 function replaceArabicGlossaryTermsWithEnglish(value) {
@@ -247,12 +255,57 @@ if (productDetail) {
       ? 'اختاروا خيارًا لعرض السعر'
       : `${currencyFormatter.format(product.price)} جنيه`;
     const image = productDetail.querySelector('.product-detail-image');
-    image.src = product.image;
-    image.alt = product.name;
+    const productImages = product.images?.length ? product.images : [product.image];
+    let galleryIndex = 0;
+    const galleryPagination = productDetail.querySelector('[data-product-gallery-pagination]');
+    const galleryCount = galleryPagination.querySelector('[data-gallery-count]');
+    const galleryDots = galleryPagination.querySelector('[data-gallery-dots]');
+    const galleryArrows = productDetail.querySelectorAll('[data-gallery-step]');
+    galleryPagination.hidden = productImages.length < 2;
+    galleryArrows.forEach((arrow) => { arrow.hidden = productImages.length < 2; });
+
+    const showGalleryImage = (index) => {
+      galleryIndex = (index + productImages.length) % productImages.length;
+      image.src = productImages[galleryIndex];
+      image.alt = `${product.name} — الصورة ${currencyFormatter.format(galleryIndex + 1)}`;
+      galleryCount.textContent = `${currencyFormatter.format(galleryIndex + 1)} / ${currencyFormatter.format(productImages.length)}`;
+      galleryDots.querySelectorAll('button').forEach((dot, dotIndex) => {
+        const isActive = dotIndex === galleryIndex;
+        dot.classList.toggle('is-active', isActive);
+        dot.setAttribute('aria-current', String(isActive));
+      });
+    };
+
+    productImages.forEach((imageSrc, index) => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = 'product-gallery-dot';
+      dot.setAttribute('aria-label', `عرض الصورة ${currencyFormatter.format(index + 1)} من ${product.name}`);
+      dot.addEventListener('click', () => showGalleryImage(index));
+      galleryDots.append(dot);
+    });
+    galleryArrows.forEach((arrow) => {
+      arrow.addEventListener('click', () => {
+        showGalleryImage(galleryIndex + Number(arrow.dataset.galleryStep));
+      });
+    });
+    showGalleryImage(0);
     const addToCart = productDetail.querySelector('.quick-add');
     addToCart.dataset.product = product.name;
     addToCart.dataset.price = hasOptions ? '' : String(product.price);
+    addToCart.dataset.addQuantity = '1';
     addToCart.setAttribute('aria-label', `أضف ${product.name} إلى الحقيبة`);
+    let selectedQuantity = 1;
+    const quantityDisplay = productDetail.querySelector('[data-product-quantity-value]');
+    productDetail.querySelectorAll('[data-product-quantity]').forEach((button) => {
+      button.addEventListener('click', () => {
+        selectedQuantity = button.dataset.productQuantity === 'increase'
+          ? Math.min(99, selectedQuantity + 1)
+          : Math.max(1, selectedQuantity - 1);
+        quantityDisplay.textContent = currencyFormatter.format(selectedQuantity);
+        addToCart.dataset.addQuantity = String(selectedQuantity);
+      });
+    });
     const optionGroup = productDetail.querySelector('[data-product-options]');
     if (hasOptions) {
       optionGroup.hidden = false;
@@ -397,14 +450,16 @@ function loadSavedCart() {
     const items = JSON.parse(savedCart);
     if (!Array.isArray(items)) throw new TypeError('Saved shopping bag must be an array.');
 
+    let cartNeedsMigration = false;
     const restoredItems = items.map((item) => {
-      const product = Object.values(productCatalog).find((candidate) => candidate.name === item?.name);
+      const product = Object.values(productCatalog).find((candidate) => (
+        candidate.name === item?.name || candidate.legacyNames?.includes(item?.name)
+      ));
       const variant = item?.variant || '';
       const selectedOption = variant ? getProductOption(product || {}, variant) : null;
       const price = selectedOption?.price ?? product?.price;
       if (
         !product
-        || (item.image && item.image !== product.image)
         || (product.options ? !selectedOption : Boolean(variant))
         || !Number.isFinite(price)
         || !Number.isInteger(item.quantity)
@@ -412,15 +467,20 @@ function loadSavedCart() {
       ) {
         throw new TypeError('Saved shopping bag contains an invalid product.');
       }
+      const normalizedVariant = selectedOption?.label || '';
+      if (item.name !== product.name || item.image !== product.image || variant !== normalizedVariant) {
+        cartNeedsMigration = true;
+      }
       return {
         name: product.name,
         price,
         image: product.image,
-        variant,
+        variant: normalizedVariant,
         quantity: item.quantity
       };
     });
     cart.push(...restoredItems);
+    if (cartNeedsMigration) saveCart();
   } catch (error) {
     reportCartStorageError('load', error);
   }
@@ -480,13 +540,11 @@ function createOrderForm() {
     <h3>بيانات إتمام الطلب</h3>
     <label>الاسم الكامل<input name="name" autocomplete="name" maxlength="80" required /></label>
     <label>رقم الهاتف<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required /></label>
+    <label>منطقة التوصيل<select name="region" required><option value="">اختاروا المنطقة</option><option value="cairo_giza">القاهرة والجيزة</option><option value="delta_canal">الدلتا ومدن القناة</option><option value="border_areas">المناطق الحدودية (البحر الأحمر والساحل الشمالي والوادي الجديد ومرسى مطروح)</option><option value="upper_egypt">الصعيد</option><option value="sinai_arish">سيناء والعريش</option></select></label>
     <label>العنوان بالتفصيل<textarea name="address" autocomplete="street-address" maxlength="240" rows="3" required></textarea></label>
-    <div class="order-amount-row">
-      <label>الكمية المطلوبة<input name="amount" type="number" min="0.001" max="10000" step="0.001" required /></label>
-      <label>الوحدة<select name="unit"><option value="kg">كجم</option><option value="g">جم</option></select></label>
-    </div>
+    <p class="order-shipping-estimate" aria-live="polite">تظهر رسوم الشحن بعد اختيار منطقة التوصيل.</p>
     <label>ملاحظة إضافية (اختياري)<textarea name="note" maxlength="160" rows="2"></textarea></label>
-    <label class="order-consent"><input name="consent" type="checkbox" required /><span>أوافق على إرسال بياناتي وتفاصيل طلبي إلى فريق نجمة التمور عبر البريد الإلكتروني إلى: yousefera2@gmail.com، reem.attallah1@gmail.com، emadatala@yahoo.com، workraghoda@gmail.com، nadaatala1345@gmail.com.</span></label>
+    <label class="order-consent"><input name="consent" type="checkbox" required /><span>أوافق على إرسال بياناتي وتفاصيل طلبي إلى فريق نجمة التمور عبر البريد الإلكتروني.</span></label>
     <p class="order-form-status" role="status" aria-live="polite"></p>
     <button class="button order-submit" type="submit">اطلب الآن</button>
     <button class="continue-link order-cancel" type="button">العودة إلى الحقيبة</button>`;
@@ -496,6 +554,24 @@ function createOrderForm() {
 
 const orderForm = createOrderForm();
 const checkoutButton = cartSummary.querySelector('.checkout-button');
+
+function updateShippingEstimate() {
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const estimate = orderForm.querySelector('.order-shipping-estimate');
+  if (subtotal > 2000) {
+    estimate.textContent = 'مبروك، التوصيل مجاني لطلبكم!';
+    return;
+  }
+  const region = orderForm.elements.region.value;
+  const weightGrams = getCartWeightGrams();
+  const shippingFee = window.najmaShipping.calculateShipping(region, weightGrams, subtotal);
+  if (shippingFee === null) {
+    estimate.textContent = 'تظهر رسوم الشحن بعد اختيار منطقة التوصيل.';
+    return;
+  }
+  estimate.textContent = `رسوم الشحن: ${shippingFee.toLocaleString('ar-EG')} جنيه.`;
+}
+orderForm.elements.region.addEventListener('change', updateShippingEstimate);
 
 function showOrderForm() {
   checkoutButton.hidden = true;
@@ -521,6 +597,11 @@ function addToCartFromButton(button) {
     showToast('تعذّر إضافة المنتج. يُرجى اختيار المنتج من صفحة التفاصيل.');
     return false;
   }
+  const quantityToAdd = Number(button.dataset.addQuantity) || 1;
+  if (!Number.isInteger(quantityToAdd) || quantityToAdd < 1 || quantityToAdd > 99) {
+    showToast('يُرجى اختيار كمية من ١ إلى ٩٩.');
+    return false;
+  }
 
   button.classList.remove('is-added');
   void button.offsetWidth;
@@ -530,7 +611,11 @@ function addToCartFromButton(button) {
     item.name === button.dataset.product && (item.variant || '') === selectedOption
   ));
   if (existingItem) {
-    existingItem.quantity += 1;
+    if (existingItem.quantity + quantityToAdd > 99) {
+      showToast('لا يمكن إضافة أكثر من ٩٩ من الخيار نفسه.');
+      return false;
+    }
+    existingItem.quantity += quantityToAdd;
   } else {
     const productImage = button.closest('.product-image')?.querySelector('img')
       || document.querySelector('.product-detail-image');
@@ -539,7 +624,7 @@ function addToCartFromButton(button) {
       price,
       image: productImage?.getAttribute('src') || '',
       variant: selectedOption,
-      quantity: 1
+      quantity: quantityToAdd
     });
   }
   saveCart();
@@ -580,7 +665,7 @@ function renderCart() {
   document.querySelector('.drawer-count').textContent = `(${localizedItemCount})`;
   cartEmpty.hidden = itemCount > 0;
   cartSummary.hidden = itemCount === 0;
-  cartItems.innerHTML = cart.map((item, index) => {
+  cartItems.innerHTML = `<p class="cart-items-heading">المنتجات المختارة</p>${cart.map((item, index) => {
     const name = escapeHtml(item.name);
     const variant = item.variant ? ` — ${escapeHtml(item.variant)}` : '';
     const displayName = `${name}${variant}`;
@@ -590,7 +675,7 @@ function renderCart() {
         <div class="cart-item-image">${image ? `<img src="${image}" alt="${displayName}" />` : '<span aria-hidden="true">✳</span>'}</div>
         <div class="cart-item-details">
           <div class="cart-item-title"><h3>${displayName}</h3><strong>${currencyFormatter.format(item.price * item.quantity)} جنيه</strong></div>
-          <p>تمر من مزرعتنا</p>
+          <p>الكمية: ${currencyFormatter.format(item.quantity)} × ${currencyFormatter.format(item.price)} جنيه</p>
           <div class="cart-item-controls">
             <div class="quantity-control" aria-label="الكمية من ${displayName}">
               <button data-cart-action="decrease" data-index="${index}" aria-label="تقليل كمية ${displayName}">−</button>
@@ -601,8 +686,9 @@ function renderCart() {
           </div>
         </div>
       </article>`;
-  }).join('');
+  }).join('')}`;
   cartSummary.querySelector('.cart-subtotal strong').textContent = `${currencyFormatter.format(subtotal)} جنيه`;
+  updateShippingEstimate();
 }
 
 function openCart() {
@@ -665,8 +751,7 @@ orderForm.addEventListener('submit', async (event) => {
     name: formData.get('name'),
     phone: formData.get('phone'),
     address: formData.get('address'),
-    amount: Number(formData.get('amount')),
-    unit: formData.get('unit'),
+    region: formData.get('region'),
     note: formData.get('note'),
     consent: formData.get('consent') === 'on',
     items: cart.map(({ name, variant, price, quantity }) => ({ name, variant, price, quantity }))

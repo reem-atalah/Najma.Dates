@@ -2,7 +2,7 @@
   "name": "najma-dates-storefront",
   "private": true,
   "scripts": {
-    "start": "node --env-file-if-exists=.env server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "nodemailer": "^10.5.0"
