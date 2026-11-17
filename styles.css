@@ -86,6 +86,10 @@
 .checkout-button[hidden]{display:none}
 .continue-link{display:block;margin:14px auto 0;text-decoration:none}
 .order-form{display:grid;gap:12px;margin-top:18px}
+.cart-summary>.continue-link,.order-cancel{width:100%;min-height:46px;margin:12px 0 0;padding:0 18px;border:0;border-radius:0;background:var(--green);color:#fff;font-size:12px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
+.cart-summary>.continue-link:hover,.order-cancel:hover{background:#405b42;color:#fff}
+.order-cancel-top{margin:0 0 6px}
+.order-cancel-bottom{margin:0}
 .order-form[hidden]{display:none}
 .order-form h3{margin:0;color:var(--green);font-size:17px}
 .order-form>label,.order-amount-row>label{display:grid;gap:5px;color:var(--ink);font-size:12px;font-weight:700}
@@ -97,10 +101,11 @@
 .order-form-status{min-height:0;margin:0;color:#a22525;font-size:12px;line-height:1.6}
 .order-shipping-estimate{margin:0;padding:10px;border:1px solid var(--line);color:var(--green);font-size:12px;line-height:1.6}
 .order-form-status:empty{display:none}
-.order-submit,.product-order-now{width:100%;min-height:46px;justify-content:center;border:0;background:#1877f2;color:#fff;cursor:pointer}
-.order-submit:hover,.product-order-now:hover{background:#1264cc}
+.order-submit,.product-order-now{width:100%;min-height:46px;justify-content:center;border:0;background:var(--ink);color:#fff;cursor:pointer}
+.order-submit:hover,.product-order-now:hover{background:#281919}
 .order-submit:disabled{opacity:.65;cursor:wait}
 .order-cancel{padding:8px;border:0;background:transparent;color:var(--green);cursor:pointer}
+.order-cancel{padding:0;background:var(--green);color:#fff}
 body.cart-open{overflow:hidden}
 @keyframes cart-fade-in{from{opacity:0}to{opacity:1}}
 @keyframes cart-slide-in{from{transform:translateX(35px);opacity:.7}to{transform:translateX(0);opacity:1}}

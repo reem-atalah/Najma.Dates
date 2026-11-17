@@ -547,7 +547,7 @@ function createOrderForm() {
     <label class="order-consent"><input name="consent" type="checkbox" required /><span>أوافق على إرسال بياناتي وتفاصيل طلبي إلى فريق نجمة التمور عبر البريد الإلكتروني.</span></label>
     <p class="order-form-status" role="status" aria-live="polite"></p>
     <button class="button order-submit" type="submit">اطلب الآن</button>
-    <button class="continue-link order-cancel" type="button">العودة إلى الحقيبة</button>`;
+    <button class="continue-link order-cancel order-cancel-bottom" type="button">العودة إلى الحقيبة ↓</button>`;
   cartSummary.append(form);
   return form;
 }
@@ -735,11 +735,11 @@ cartItems.addEventListener('click', (event) => {
 });
 
 checkoutButton.addEventListener('click', showOrderForm);
-orderForm.querySelector('.order-cancel').addEventListener('click', () => {
+orderForm.querySelectorAll('.order-cancel').forEach((button) => button.addEventListener('click', () => {
   orderForm.hidden = true;
   checkoutButton.hidden = false;
   checkoutButton.focus();
-});
+}));
 orderForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!orderForm.reportValidity()) return;
