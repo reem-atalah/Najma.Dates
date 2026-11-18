@@ -1,25 +1,32 @@
 # Najma Dates storefront
 
-The storefront is a static Cloudflare Pages site. Order and contact messages are handled by Pages Functions and sent through Resend, so the browser calls the same Cloudflare domain and does not wait for a sleeping Render service.
+This project runs as a Cloudflare Worker with static assets. The Worker serves the storefront and handles `/api/orders` and `/api/contact`; both APIs send mail through the Resend Node.js SDK.
 
-## Deploy on Cloudflare Pages
+## Cloudflare Worker build settings
 
-Create or update a Pages project using this folder (`Najma.Dates`) as its project root. Set the build command to blank and the build output directory to `.`. The `functions/` directory must be at the project root so Cloudflare deploys `/api/orders` and `/api/contact` with the static files.
+For this repository layout, configure the Worker build as follows:
 
-## Configure Resend
+- Root directory: `/Najma.Dates` (if this folder is at the repository root)
+- Build command: `npm install`
+- Deploy command: `npm run deploy`
 
-1. Add and verify the sending domain in Resend. Use the DNS records Resend provides for that domain; keep the existing MX records for your mailbox unless Resend's instructions specifically require a change.
-2. Create a Resend API key.
-3. In Cloudflare Pages, open **Settings → Variables and Secrets** and add these as production secrets/variables:
-   - `RESEND_API_KEY`: the Resend API key.
-   - `RESEND_FROM`: a sender address on the domain verified in Resend, for example `Najma Dates <orders@your-verified-domain>`.
-4. Redeploy the Pages project after adding the values.
-5. Submit a test contact message and order, and verify that the team inboxes receive them.
+Do not use `npm start` as the deploy command. It starts a local Node.js server that stays open, so Cloudflare waits for it until the build times out. The `deploy` script runs Wrangler and publishes the Worker described in `wrangler.jsonc`.
 
-Do not put the Resend key in browser code or commit it to the project. Resend only sends email; Cloudflare Pages hosts the website and runs the API functions.
+The Worker name in `wrangler.jsonc` must exactly match the Worker name in the Cloudflare dashboard. It is currently set to `najma-dates`; if your Worker has another name, update the `name` value in `wrangler.jsonc` to match before deploying.
+
+## Resend secrets
+
+1. Verify your sending domain in Resend and use its DNS instructions. Keep existing mailbox MX records unless Resend explicitly tells you to change them.
+2. In the Worker dashboard, add these under **Settings → Variables and Secrets** as runtime secrets/variables:
+   - `RESEND_API_KEY`: your Resend API key.
+   - `RESEND_FROM`: a sender address on the domain verified in Resend, such as `Najma Dates <orders@your-verified-domain>`.
+3. Remove the old `SMTP_USER` and `SMTP_APP_PASSWORD` build variables; this Worker uses Resend instead.
+4. Deploy, then submit a test contact message and order and confirm receipt in the team inboxes.
+
+Do not put the Resend API key in browser code or commit it. Resend sends the email; Cloudflare Workers serves the site and runs the APIs.
 
 ## Local development
 
-Run `npm install`, then `npm start` with Node.js 22.9 or newer to serve the storefront and its API locally. Set `RESEND_API_KEY` and `RESEND_FROM` in a private `.env` file. The local Node server and deployed Pages Functions use the Resend Node.js SDK and the same settings.
+Use Node.js 22.12 or newer. Set `RESEND_API_KEY` and `RESEND_FROM` in a private `.env` file for the local Node server, then run `npm install` and `npm start`. To run the Worker locally with Wrangler, use `npm run dev` and provide the secrets through Wrangler's local development variables.
 
-The API validates order options and prices, validates contact data, rate-limits submissions, and sends plain-text email. It does not keep a customer database. The cart email flow is not connected to payment processing, and search and newsletter remain front-end demonstrations.
+The API validates order options and prices, validates contact data, rate-limits submissions, sends plain-text email, and does not keep a customer database. The cart email flow is not connected to payment processing; search and newsletter remain front-end demonstrations.

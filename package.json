@@ -2,12 +2,17 @@
   "name": "najma-dates-storefront",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
     "resend": "^6.38.1"
+  },
+  "devDependencies": {
+    "wrangler": "^4.164.0"
   }
 }
