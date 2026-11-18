@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const productCatalog = require('./product-catalog');
 const shipping = require('./shipping-rates');
 
@@ -191,37 +191,31 @@ function validateContact(payload) {
   return { name, email, topic, message };
 }
 
-function getMailConfig() {
-  const username = process.env.SMTP_USER || process.env.MAIL_USERNAME;
-  const password = process.env.SMTP_APP_PASSWORD || process.env.MAIL_PASSWORD;
-  if (username !== emailSender || !password) return null;
-  const port = Number(process.env.SMTP_PORT || process.env.MAIL_PORT) || 587;
-  const host = process.env.SMTP_HOST || process.env.MAIL_SERVER || 'smtp.gmail.com';
-  return { username, password, host, port };
-}
-
-let mailTransport;
-let mailTransportSettings;
-function getMailTransport(config) {
-  const settings = `${config.username}:${config.password}:${config.host}:${config.port}`;
-  if (!mailTransport || mailTransportSettings !== settings) {
-    mailTransport = nodemailer.createTransport({
-      host: config.host,
-      port: config.port,
-      secure: config.port === 465,
-      requireTLS: config.port !== 465,
-      // Bind through IPv4 so Nodemailer does not choose an unreachable IPv6 route.
-      localAddress: process.env.SMTP_LOCAL_ADDRESS || '0.0.0.0',
-      auth: { user: config.username, pass: config.password },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-      disableFileAccess: true,
-      disableUrlAccess: true
-    });
-    mailTransportSettings = settings;
+async function sendWithResend(message) {
+  if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM) {
+    throw Object.assign(new Error('Email service is not configured.'), { status: 503 });
   }
-  return mailTransport;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  let result;
+  try {
+    result = await resend.emails.send({
+      from: process.env.RESEND_FROM,
+      to: message.to,
+      bcc: message.bcc,
+      replyTo: message.replyTo,
+      subject: message.subject,
+      text: message.text
+    })
+  } catch (cause) {
+    const error = new Error('Resend network request failed.');
+    error.cause = cause;
+    throw error;
+  }
+  if (result.error) {
+    const error = new Error(result.error.message || 'Resend could not send the email.');
+    error.code = result.error.name;
+    throw error;
+  }
 }
 
 function describeMailError(error, depth = 0) {
@@ -284,11 +278,7 @@ async function handleMailRequest(request, response, sendMail, createMessage) {
 }
 
 function createServer({ sendMail: sendMailOverride } = {}) {
-  const sendMail = sendMailOverride || (async (message) => {
-    const config = getMailConfig();
-    if (!config) throw Object.assign(new Error('Email service is not configured.'), { status: 503 });
-    await getMailTransport(config).sendMail(message);
-  });
+  const sendMail = sendMailOverride || sendWithResend;
   const orderMessage = async (payload) => {
     const order = validateOrder(payload);
     const products = order.items.map((item) => {

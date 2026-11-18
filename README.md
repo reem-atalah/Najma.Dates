@@ -1,29 +1,25 @@
-# NjamaDates storefront
+# Najma Dates storefront
 
-A responsive storefront for Najma Dates with product options, an interactive cart, order emails, and a contact form.
+The storefront is a static Cloudflare Pages site. Order and contact messages are handled by Pages Functions and sent through Resend, so the browser calls the same Cloudflare domain and does not wait for a sleeping Render service.
 
-## Run locally
+## Deploy on Cloudflare Pages
 
-Use Node.js 22.9 or newer. Set the Gmail App Password privately in `.env`, install dependencies, and start the server:
+Create or update a Pages project using this folder (`Najma.Dates`) as its project root. Set the build command to blank and the build output directory to `.`. The `functions/` directory must be at the project root so Cloudflare deploys `/api/orders` and `/api/contact` with the static files.
 
-```powershell
-npm install
-npm start
-```
+## Configure Resend
 
-Open `http://localhost:3000`. Do not open the HTML files directly; the Node server provides the same-origin order and contact APIs.
+1. Add and verify the sending domain in Resend. Use the DNS records Resend provides for that domain; keep the existing MX records for your mailbox unless Resend's instructions specifically require a change.
+2. Create a Resend API key.
+3. In Cloudflare Pages, open **Settings → Variables and Secrets** and add these as production secrets/variables:
+   - `RESEND_API_KEY`: the Resend API key.
+   - `RESEND_FROM`: a sender address on the domain verified in Resend, for example `Najma Dates <orders@your-verified-domain>`.
+4. Redeploy the Pages project after adding the values.
+5. Submit a test contact message and order, and verify that the team inboxes receive them.
 
-## Configure Gmail sending
+Do not put the Resend key in browser code or commit it to the project. Resend only sends email; Cloudflare Pages hosts the website and runs the API functions.
 
-The server sends both order and contact emails from `reem.atalah1@gmail.com`. Orders and contact messages are delivered to the five team email addresses configured on the server. The team addresses are placed in BCC so recipients do not see one another's addresses. Contact messages use the customer's email as `Reply-To`.
+## Local development
 
-1. Sign in to `reem.atalah1@gmail.com` and enable 2-Step Verification.
-2. Create a Google App Password for this application. Gmail SMTP rejects the normal account password; use the 16-character App Password. If Google does not offer App Passwords for this account, use an approved mail provider or hosting email service instead.
-3. In the project folder, set `SMTP_USER=reem.atalah1@gmail.com` and `SMTP_APP_PASSWORD` in `.env`. Use the 16-character Google App Password, with no spaces. The server also accepts the source Flask project's `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SERVER`, and `MAIL_PORT` names; Gmail SMTP is the default host and port 587 uses STARTTLS. SMTP connects over IPv4 by default for networks without working IPv6; set `SMTP_LOCAL_ADDRESS` only if your host requires a specific outbound IPv4 address.
-4. Restart `npm start` after changing `.env`. Never commit `.env`, put the password in browser code, or share it in chat.
-5. For deployment, use a Node.js host with HTTPS and set `SMTP_USER=reem.atalah1@gmail.com` and `SMTP_APP_PASSWORD` in the host's secret/environment-variable settings. Do not upload `.env`. The site and API must use the same origin.
-6. Submit a test order and contact message, and verify delivery to the intended inboxes before accepting real customer details.
+Run `npm install`, then `npm start` with Node.js 22.9 or newer to serve the storefront and its API locally. Set `RESEND_API_KEY` and `RESEND_FROM` in a private `.env` file. The local Node server and deployed Pages Functions use the Resend Node.js SDK and the same settings.
 
-The server validates order options and prices, validates contact data, rate-limits submissions, sends plain-text email, and does not keep a customer database. Email providers and recipient mail services still process and may retain messages according to their own policies; use HTTPS in production and limit access to the team inboxes. Review Gmail sending limits and Google Workspace policy before relying on Gmail for business-volume email.
-
-The cart email flow is not connected to payment processing. Search and newsletter remain front-end demonstrations.
+The API validates order options and prices, validates contact data, rate-limits submissions, and sends plain-text email. It does not keep a customer database. The cart email flow is not connected to payment processing, and search and newsletter remain front-end demonstrations.

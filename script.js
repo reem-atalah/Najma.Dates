@@ -14,7 +14,8 @@ const cartSummary = document.querySelector('.cart-summary');
 const toast = document.querySelector('.toast');
 const cart = [];
 const currencyFormatter = new Intl.NumberFormat('ar-EG');
-const API_BASE_URL = 'https://najma-dates-4mry.onrender.com';
+// Keep mail requests on the same Cloudflare Pages origin as the storefront.
+const API_BASE_URL = '';
 let originalPageTitle = document.title;
 const arabicGlossaryPattern = /(^|[^\u0621-\u064A])((?:وبال|وفال|وكال|ولل|وال|بال|فال|كال|لل|وب|وف|وك|ول|و|ف|ب|ك|ل)?(?:ال)?(?:تمر|تمور|مجدول|سيوي))(?=$|[^\u0621-\u064A])/g;
 const productCatalog = window.productCatalog;
