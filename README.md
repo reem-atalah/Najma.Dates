@@ -9,8 +9,11 @@ For this repository layout, configure the Worker build as follows:
 - Root directory: `/Najma.Dates` (if this folder is at the repository root)
 - Build command: `npm install`
 - Deploy command: `npm run deploy`
+- Version command: `npm run deploy:version`
 
 Do not use `npm start` as the deploy command. It starts a local Node.js server that stays open, so Cloudflare waits for it until the build times out. The `deploy` script runs Wrangler and publishes the Worker described in `wrangler.jsonc`.
+
+The Version command uploads a Worker version for non-production builds without promoting it to production. Cloudflare documents `wrangler versions upload` for this version-only flow.
 
 The Worker name in `wrangler.jsonc` must exactly match the Worker name in the Cloudflare dashboard. It is currently set to `najma-dates`; if your Worker has another name, update the `name` value in `wrangler.jsonc` to match before deploying.
 
