@@ -290,8 +290,8 @@ function createServer({ sendMail: sendMailOverride } = {}) {
     }).join('\n');
     return {
       from: emailSender,
-      to: emailSender,
-      bcc: emailRecipients,
+      to: emailRecipients[0],
+      bcc: emailRecipients.slice(1),
       subject: 'طلب جديد من متجر نجمة التمور',
       text: [
         'طلب جديد من متجر نجمة التمور',
@@ -313,8 +313,8 @@ function createServer({ sendMail: sendMailOverride } = {}) {
     const contact = validateContact(payload);
     return {
       from: emailSender,
-      to: emailSender,
-      bcc: emailRecipients,
+      to: emailRecipients[0],
+      bcc: emailRecipients.slice(1),
       replyTo: contact.email,
       subject: 'رسالة جديدة من صفحة التواصل - نجمة التمور',
       text: [
