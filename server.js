@@ -33,8 +33,6 @@ loadEnvFile();
 
 const emailSender = 'reem.atalah1@gmail.com';
 const emailRecipients = [
-  'yousefera2@gmail.com',
-  'reem.atalah1@gmail.com',
   'emadatala@yahoo.com',
   'workraghoda@gmail.com',
   'nadaatala1345@gmail.com'
@@ -78,6 +76,11 @@ function getAllowedOrigin(origin) {
     return null;
   }
   if (parsedOrigin.protocol === 'https:' && parsedOrigin.hostname.endsWith('.pages.dev')) {
+    return origin;
+  }
+  if (process.env.NODE_ENV !== 'production'
+    && parsedOrigin.protocol === 'http:'
+    && ['localhost', '127.0.0.1', '[::1]'].includes(parsedOrigin.hostname)) {
     return origin;
   }
   const configuredOrigins = (process.env.ALLOWED_ORIGINS || '')

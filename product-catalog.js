@@ -18,14 +18,19 @@
         { label: '١ كجم — جامبو', legacyLabels: ['جامبو'], price: 450, weightGrams: 1000 },
         {
           label: 'عروض',
+          isOfferGroup: true,
           children: [
             {
+              id: 'family-large',
+              isOffer: true,
               label: 'عرض العيلة (3 عبوات لارج = 3 كجم)',
               price: 1000,
               weightGrams: 3000,
               content: 'بـ 1000 جنيه بدلاً من 1050 جنيه'
             },
             {
+              id: 'family-jumbo',
+              isOffer: true,
               label: 'عرض العيلة (3 عبوات جامبو = 3 كجم)',
               price: 1250,
               weightGrams: 3000,
@@ -50,6 +55,8 @@
       options: [
         { label: '800 جم', price: 400, weightGrams: 800 },
         {
+          id: 'jumbo-saver',
+          isOffer: true,
           label: 'عرض التوفير (3 عبوات = 2.4 كجم)',
           price: 1150,
           weightGrams: 2400,

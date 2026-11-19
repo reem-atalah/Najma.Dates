@@ -22,6 +22,23 @@ const productCatalog = window.productCatalog;
 let toastTimer;
 const dateTermAttributes = ['alt', 'aria-label', 'title', 'placeholder'];
 
+document.querySelectorAll('.main-nav').forEach((nav) => {
+  if (nav.querySelector('a[href="offers.html"]')) return;
+  const offersLink = document.createElement('a');
+  offersLink.href = 'offers.html';
+  offersLink.textContent = 'العروض';
+  const aboutLink = nav.querySelector('a[href="about.html"]');
+  nav.insertBefore(offersLink, aboutLink || null);
+});
+
+document.querySelectorAll('.mobile-nav').forEach((nav) => {
+  if (nav.querySelector('a[href="offers.html"]')) return;
+  const offersLink = document.createElement('a');
+  offersLink.href = 'offers.html';
+  offersLink.textContent = 'العروض';
+  nav.insertBefore(offersLink, nav.querySelector('button') || null);
+});
+
 searchResults.className = 'search-results';
 searchResults.id = 'site-search-results';
 searchResults.setAttribute('role', 'status');
@@ -98,7 +115,7 @@ function renderSearchResults(query) {
 
 function getProductOption(product, label) {
   return product.options?.flatMap((option) => option.children || [option])
-    .find((option) => option.label === label || option.legacyLabels?.includes(label));
+    .find((option) => option.label === label || option.id === label || option.legacyLabels?.includes(label));
 }
 
 function getCartWeightGrams() {
@@ -237,7 +254,9 @@ protectDateTermAttributes(document.body);
 
 const productDetail = document.querySelector('[data-product-detail]');
 if (productDetail) {
-  const product = productCatalog[new URLSearchParams(window.location.search).get('product')];
+  const productUrl = new URL(window.location.href);
+  const productId = productUrl.searchParams.get('product');
+  const product = productCatalog[productId];
   const notFound = document.querySelector('[data-product-not-found]');
   if (!product) {
     productDetail.hidden = true;
@@ -306,10 +325,21 @@ if (productDetail) {
           : Math.max(1, selectedQuantity - 1);
         quantityDisplay.textContent = currencyFormatter.format(selectedQuantity);
         addToCart.dataset.addQuantity = String(selectedQuantity);
+        const nextUrl = new URL(window.location.href);
+        if (selectedQuantity === 1) nextUrl.searchParams.delete('quantity');
+        else nextUrl.searchParams.set('quantity', String(selectedQuantity));
+        window.history.replaceState({}, '', nextUrl);
       });
     });
+    const selectedQuantityFromUrl = Number(productUrl.searchParams.get('quantity'));
+    if (Number.isInteger(selectedQuantityFromUrl) && selectedQuantityFromUrl > 1 && selectedQuantityFromUrl <= 99) {
+      selectedQuantity = selectedQuantityFromUrl;
+      quantityDisplay.textContent = currencyFormatter.format(selectedQuantity);
+      addToCart.dataset.addQuantity = String(selectedQuantity);
+    }
     const optionGroup = productDetail.querySelector('[data-product-options]');
     if (hasOptions) {
+      let restoringProductUrl = Boolean(productUrl.searchParams.get('variant'));
       optionGroup.hidden = false;
       const optionButtons = optionGroup.querySelector('[data-option-buttons]');
       const optionSubgroup = optionGroup.querySelector('[data-option-subgroup]');
@@ -320,8 +350,10 @@ if (productDetail) {
         optionButton.type = 'button';
         optionButton.className = 'product-option-button';
         optionButton.dataset.productOptionGroup = option.label;
+        optionButton.dataset.productOptionId = option.id || '';
         optionButton.setAttribute('aria-pressed', 'false');
         optionButton.textContent = option.label;
+        if (option.isOfferGroup || option.isOffer) optionButton.hidden = true;
         if (option.children) {
           optionButton.setAttribute('aria-expanded', 'false');
         } else {
@@ -335,6 +367,7 @@ if (productDetail) {
           subOptionButton.className = 'product-option-button';
           subOptionButton.dataset.productOption = child.label;
           subOptionButton.dataset.productOptionGroup = option.label;
+          subOptionButton.dataset.productOptionId = child.id || '';
           subOptionButton.setAttribute('aria-pressed', 'false');
           subOptionButton.textContent = child.label;
           subOptionButtons.append(subOptionButton);
@@ -369,9 +402,15 @@ if (productDetail) {
           addToCart.dataset.option = '';
           addToCart.dataset.price = '';
           priceElement.textContent = 'اختاروا أحد العروض لعرض السعر';
-          optionSelection.textContent = 'اختاروا أحد العروض';
-          optionContent.hidden = true;
+          if (optionSelection) optionSelection.textContent = 'اختاروا أحد العروض';
+          if (optionContent) optionContent.hidden = true;
           productDetail.querySelector('.product-detail-weight').textContent = groupLabel;
+          if (!restoringProductUrl) {
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set('group', groupLabel);
+            nextUrl.searchParams.delete('variant');
+            window.history.replaceState({}, '', nextUrl);
+          }
           return;
         }
 
@@ -384,11 +423,37 @@ if (productDetail) {
         addToCart.dataset.option = selectedOption.label;
         addToCart.dataset.price = String(selectedOption.price);
         priceElement.textContent = `${currencyFormatter.format(selectedOption.price)} جنيه`;
-        optionSelection.textContent = selectedOption.label;
+        if (optionSelection) optionSelection.textContent = selectedOption.label;
         productDetail.querySelector('.product-detail-weight').textContent = selectedOption.label;
-        optionContent.textContent = selectedOption.content || '';
-        optionContent.hidden = !selectedOption.content;
+        if (optionContent) {
+          optionContent.textContent = selectedOption.content || '';
+          optionContent.hidden = !selectedOption.content;
+        }
+        if (!restoringProductUrl) {
+          const nextUrl = new URL(window.location.href);
+          nextUrl.searchParams.set('variant', selectedOption.id || selectedOption.label);
+          nextUrl.searchParams.delete('group');
+          window.history.replaceState({}, '', nextUrl);
+        }
       });
+    }
+    const initialVariant = productUrl.searchParams.get('variant');
+    const initialOption = initialVariant && getProductOption(product, initialVariant);
+    if (initialOption) {
+      const parentGroup = product.options.find((option) => option.children?.includes(initialOption));
+      if (parentGroup) {
+        const groupButton = [...optionButtons.querySelectorAll('button')]
+          .find((button) => button.dataset.productOptionGroup === parentGroup.label);
+        const childButton = [...subOptionButtons.querySelectorAll('button')]
+          .find((button) => button.dataset.productOption === initialOption.label);
+        groupButton?.click();
+        childButton?.click();
+      } else {
+        const variantButton = [...optionButtons.querySelectorAll('button')]
+          .find((button) => button.dataset.productOption === initialOption.label);
+        variantButton?.click();
+      }
+      restoringProductUrl = false;
     }
     protectDateTerms(document.body);
     protectDateTermAttributes(document.body);
@@ -542,6 +607,7 @@ function createOrderForm() {
     <h3>بيانات إتمام الطلب</h3>
     <label>الاسم الكامل<input name="name" autocomplete="name" maxlength="80" required /></label>
     <label>رقم الهاتف<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required /></label>
+    <label>البريد الإلكتروني (اختياري لاستلام تفاصيل الطلب)<input name="email" type="email" autocomplete="email" maxlength="254" /></label>
     <label>منطقة التوصيل<select name="region" required><option value="">اختاروا المنطقة</option><option value="cairo_giza">القاهرة والجيزة</option><option value="delta_canal">الدلتا ومدن القناة</option><option value="border_areas">المناطق الحدودية (البحر الأحمر والساحل الشمالي والوادي الجديد ومرسى مطروح)</option><option value="upper_egypt">الصعيد</option><option value="sinai_arish">سيناء والعريش</option></select></label>
     <label>العنوان بالتفصيل<textarea name="address" autocomplete="street-address" maxlength="240" rows="3" required></textarea></label>
     <p class="order-shipping-estimate" aria-live="polite">تظهر رسوم الشحن بعد اختيار منطقة التوصيل.</p>
@@ -624,7 +690,7 @@ function addToCartFromButton(button) {
     cart.push({
       name: button.dataset.product,
       price,
-      image: productImage?.getAttribute('src') || '',
+      image: button.dataset.image || productImage?.getAttribute('src') || '',
       variant: selectedOption,
       quantity: quantityToAdd
     });
@@ -752,6 +818,7 @@ orderForm.addEventListener('submit', async (event) => {
   const payload = {
     name: formData.get('name'),
     phone: formData.get('phone'),
+    email: formData.get('email'),
     address: formData.get('address'),
     region: formData.get('region'),
     note: formData.get('note'),
