@@ -14,8 +14,8 @@
         'photo_6046412473952309928_y.jpg'
       ],
       options: [
-        { label: '١ كجم — لارج', legacyLabels: ['لارج'], price: 350, weightGrams: 1000 },
-        { label: '١ كجم — جامبو', legacyLabels: ['جامبو'], price: 450, weightGrams: 1000 },
+        { id: 'large-1kg', label: '١ كجم — لارج', legacyLabels: ['لارج'], price: 350, weightGrams: 1000 },
+        { id: 'jumbo-1kg', label: '١ كجم — جامبو', legacyLabels: ['جامبو'], price: 450, weightGrams: 1000 },
         {
           label: 'عروض',
           isOfferGroup: true,
@@ -53,7 +53,7 @@
         'WhatsApp%20Imag%202026-11-09%20at%203.25.56%20AM.jpeg'
       ],
       options: [
-        { label: '800 جم', price: 400, weightGrams: 800 },
+        { id: '800g', label: '800 جم', price: 400, weightGrams: 800 },
         {
           id: 'jumbo-saver',
           isOffer: true,
@@ -73,10 +73,10 @@
       image: 'photo_6046412473952309923_y.jpg',
       images: ['photo_6046412473952309923_y.jpg', 'photo_6046412473952309922_y.jpg'],
       options: [
-        { label: '5كج', price: 350, weightGrams: 5000 },
-        { label: '3كج', price: 210, weightGrams: 3000 },
-        { label: '1400 جم', price: 100, weightGrams: 1400 },
-        { label: '700جم', price: 60, weightGrams: 700 }
+        { id: '5kg', label: '5كج', price: 350, weightGrams: 5000 },
+        { id: '3kg', label: '3كج', price: 210, weightGrams: 3000 },
+        { id: '1400g', label: '1400 جم', price: 100, weightGrams: 1400 },
+        { id: '700g', label: '700جم', price: 60, weightGrams: 700 }
       ],
       category: 'التمر السيوي',
       categoryUrl: 'siwi-dates.html',

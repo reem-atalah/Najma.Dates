@@ -131,8 +131,6 @@ function validateOrder(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new TypeError('Order details are invalid.');
   }
-  if (payload.consent !== true) throw new TypeError('Consent is required.');
-
   const name = cleanText(payload.name, 'Name', 80);
   const phone = String(payload.phone || '').replace(/\D/g, '');
   if (!/^(?:01[0125]\d{8}|201[0125]\d{8}|1[0125]\d{8})$/.test(phone)) {

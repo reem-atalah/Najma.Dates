@@ -95,26 +95,20 @@ html[lang^="en"] .product-description-en{display:inline}
 .checkout-button[hidden]{display:none}
 .continue-link{display:block;margin:14px auto 0;text-decoration:none}
 .order-form{display:grid;gap:12px;margin-top:18px}
-.cart-summary>.continue-link,.order-cancel{width:100%;min-height:46px;margin:12px 0 0;padding:0 18px;border:0;border-radius:0;background:var(--green);color:#fff;font-size:12px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
-.cart-summary>.continue-link:hover,.order-cancel:hover{background:#405b42;color:#fff}
-.order-cancel-top{margin:0 0 6px}
-.order-cancel-bottom{margin:0}
+.cart-summary>.continue-link{width:100%;min-height:46px;margin:12px 0 0;padding:0 18px;border:0;border-radius:0;background:var(--green);color:#fff;font-size:12px;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
+.cart-summary>.continue-link:hover{background:#405b42;color:#fff}
 .order-form[hidden]{display:none}
 .order-form h3{margin:0;color:var(--green);font-size:17px}
 .order-form>label,.order-amount-row>label{display:grid;gap:5px;color:var(--ink);font-size:12px;font-weight:700}
 .order-form input:not([type="checkbox"]),.order-form textarea,.order-form select{width:100%;padding:10px;border:1px solid var(--line);border-radius:3px;background:#fffefa;color:var(--ink);font:inherit;font-weight:400}
 .order-form textarea{resize:vertical}
 .order-amount-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.order-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important;font-weight:400!important;line-height:1.6}
-.order-consent input{margin:3px 0 0;flex:0 0 auto}
 .order-form-status{min-height:0;margin:0;color:#a22525;font-size:12px;line-height:1.6}
 .order-shipping-estimate{margin:0;padding:10px;border:1px solid var(--line);color:var(--green);font-size:12px;line-height:1.6}
 .order-form-status:empty{display:none}
 .order-submit,.product-order-now{width:100%;min-height:46px;justify-content:center;border:0;background:var(--ink);color:#fff;cursor:pointer}
 .order-submit:hover,.product-order-now:hover{background:#281919}
 .order-submit:disabled{opacity:.65;cursor:wait}
-.order-cancel{padding:8px;border:0;background:transparent;color:var(--green);cursor:pointer}
-.order-cancel{padding:0;background:var(--green);color:#fff}
 body.cart-open{overflow:hidden}
 @keyframes cart-fade-in{from{opacity:0}to{opacity:1}}
 @keyframes cart-slide-in{from{transform:translateX(35px);opacity:.7}to{transform:translateX(0);opacity:1}}
@@ -342,7 +336,7 @@ body::after{right:-105px;bottom:9vh;width:clamp(140px,18vw,235px);animation-dura
 .product-option-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .product-option-buttons{display:flex;flex-wrap:wrap;gap:9px}
 .product-option-subgroup{margin-top:16px}
-.product-option-button{min-width:72px;padding:10px 14px;border:1px solid var(--line);background:#fffefa;color:var(--green);cursor:pointer}
+.product-option-button{display:inline-flex;align-items:center;min-width:72px;padding:10px 14px;border:1px solid var(--line);background:#fffefa;color:var(--green);text-decoration:none;cursor:pointer}
 .product-option-button.is-selected{border-color:var(--green);background:var(--green);color:#fff}
 .offers-grid{grid-template-columns:repeat(3,1fr);align-items:stretch}
 .offer-card{min-height:430px;padding:0;background:linear-gradient(145deg,#fffdf8,#f3e7d2);border:1px solid var(--line);display:flex;flex-direction:column;align-items:stretch;overflow:hidden}
@@ -382,6 +376,8 @@ body::after{right:-105px;bottom:9vh;width:clamp(140px,18vw,235px);animation-dura
 .product-detail-buy.quick-add,.product-detail-buy.quick-add:hover,.product-detail-buy.quick-add:active,.product-detail-buy.quick-add.is-added{transform:none;animation:none;transition:none;box-shadow:none;background:var(--gold);color:var(--ink)}
 .product-detail-buy.quick-add:hover{background:#c5a13e;}
 .product-detail-note{margin-top:14px;color:var(--muted);font-size:12px;line-height:1.7}
+.product-order-form-container{grid-column:1/-1;min-width:0}
+.product-order-form-container .order-form{grid-template-columns:1fr;scroll-margin-top:96px}
 .product-detail-promise{margin-top:70px;padding:24px;background:var(--cream);text-align:center;color:var(--green);font-size:14px}
 .product-not-found{max-width:650px;margin:70px auto;text-align:center}
 .product-not-found h1{color:var(--green);font-size:30px}

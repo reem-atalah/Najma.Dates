@@ -255,7 +255,7 @@ protectDateTermAttributes(document.body);
 const productDetail = document.querySelector('[data-product-detail]');
 if (productDetail) {
   const productUrl = new URL(window.location.href);
-  const productId = productUrl.searchParams.get('product');
+  const productId = productUrl.searchParams.get('product') || document.body.dataset.productId;
   const product = productCatalog[productId];
   const notFound = document.querySelector('[data-product-not-found]');
   if (!product) {
@@ -338,22 +338,27 @@ if (productDetail) {
       addToCart.dataset.addQuantity = String(selectedQuantity);
     }
     const optionGroup = productDetail.querySelector('[data-product-options]');
+    let optionButtons;
+    let subOptionButtons;
     if (hasOptions) {
-      let restoringProductUrl = Boolean(productUrl.searchParams.get('variant'));
+      let restoringProductUrl = Boolean(productUrl.searchParams.get('variant') || document.body.dataset.productVariant);
       optionGroup.hidden = false;
-      const optionButtons = optionGroup.querySelector('[data-option-buttons]');
+      optionButtons = optionGroup.querySelector('[data-option-buttons]');
       const optionSubgroup = optionGroup.querySelector('[data-option-subgroup]');
-      const subOptionButtons = optionSubgroup.querySelector('[data-sub-option-buttons]');
+      subOptionButtons = optionSubgroup.querySelector('[data-sub-option-buttons]');
       const optionContent = optionGroup.querySelector('[data-option-content]');
       product.options.forEach((option) => {
-        const optionButton = document.createElement('button');
-        optionButton.type = 'button';
+        const optionButton = document.createElement(option.children ? 'button' : 'a');
+        if (option.children) {
+          optionButton.type = 'button';
+        } else {
+          optionButton.href = `product-${productId}-${option.id}.html`;
+        }
         optionButton.className = 'product-option-button';
         optionButton.dataset.productOptionGroup = option.label;
         optionButton.dataset.productOptionId = option.id || '';
         optionButton.setAttribute('aria-pressed', 'false');
         optionButton.textContent = option.label;
-        if (option.isOfferGroup || option.isOffer) optionButton.hidden = true;
         if (option.children) {
           optionButton.setAttribute('aria-expanded', 'false');
         } else {
@@ -362,8 +367,8 @@ if (productDetail) {
         optionButtons.append(optionButton);
 
         option.children?.forEach((child) => {
-          const subOptionButton = document.createElement('button');
-          subOptionButton.type = 'button';
+          const subOptionButton = document.createElement('a');
+          subOptionButton.href = `product-${productId}-${child.id}.html`;
           subOptionButton.className = 'product-option-button';
           subOptionButton.dataset.productOption = child.label;
           subOptionButton.dataset.productOptionGroup = option.label;
@@ -377,6 +382,10 @@ if (productDetail) {
       optionGroup.addEventListener('click', (event) => {
         const selectedButton = event.target.closest('[data-product-option-group]');
         if (!selectedButton) return;
+        if (selectedButton.tagName === 'A') {
+          if (event.isTrusted) return;
+          event.preventDefault();
+        }
 
         const groupLabel = selectedButton.dataset.productOptionGroup;
         const isOfferGroup = selectedButton.hasAttribute('aria-expanded');
@@ -435,21 +444,24 @@ if (productDetail) {
           nextUrl.searchParams.delete('group');
           window.history.replaceState({}, '', nextUrl);
         }
+        if (selectedOption.id && document.body.dataset.productVariant !== selectedOption.id) {
+          window.location.assign(`product-${productId}-${selectedOption.id}.html`);
+        }
       });
     }
-    const initialVariant = productUrl.searchParams.get('variant');
+    const initialVariant = productUrl.searchParams.get('variant') || document.body.dataset.productVariant;
     const initialOption = initialVariant && getProductOption(product, initialVariant);
     if (initialOption) {
       const parentGroup = product.options.find((option) => option.children?.includes(initialOption));
       if (parentGroup) {
         const groupButton = [...optionButtons.querySelectorAll('button')]
           .find((button) => button.dataset.productOptionGroup === parentGroup.label);
-        const childButton = [...subOptionButtons.querySelectorAll('button')]
+        const childButton = [...subOptionButtons.querySelectorAll('[data-product-option]')]
           .find((button) => button.dataset.productOption === initialOption.label);
         groupButton?.click();
         childButton?.click();
       } else {
-        const variantButton = [...optionButtons.querySelectorAll('button')]
+        const variantButton = [...optionButtons.querySelectorAll('[data-product-option]')]
           .find((button) => button.dataset.productOption === initialOption.label);
         variantButton?.click();
       }
@@ -602,7 +614,8 @@ searchInput.addEventListener('keydown', (event) => {
 function createOrderForm() {
   const form = document.createElement('form');
   form.className = 'order-form';
-  form.hidden = true;
+  const productOrderFormContainer = document.querySelector('.product-order-form-container');
+  form.hidden = !productOrderFormContainer;
   form.innerHTML = `
     <h3>بيانات إتمام الطلب</h3>
     <label>الاسم الكامل<input name="name" autocomplete="name" maxlength="80" required /></label>
@@ -612,11 +625,10 @@ function createOrderForm() {
     <label>العنوان بالتفصيل<textarea name="address" autocomplete="street-address" maxlength="240" rows="3" required></textarea></label>
     <p class="order-shipping-estimate" aria-live="polite">تظهر رسوم الشحن بعد اختيار منطقة التوصيل.</p>
     <label>ملاحظة إضافية (اختياري)<textarea name="note" maxlength="160" rows="2"></textarea></label>
-    <label class="order-consent"><input name="consent" type="checkbox" required /><span>أوافق على إرسال بياناتي وتفاصيل طلبي إلى فريق نجمة التمور عبر البريد الإلكتروني.</span></label>
     <p class="order-form-status" role="status" aria-live="polite"></p>
     <button class="button order-submit" type="submit">اطلب الآن</button>
     <button class="continue-link order-cancel order-cancel-bottom" type="button">العودة إلى الحقيبة ↓</button>`;
-  cartSummary.append(form);
+  (productOrderFormContainer || cartSummary).append(form);
   return form;
 }
 
@@ -815,6 +827,12 @@ orderForm.addEventListener('submit', async (event) => {
   const submitButton = orderForm.querySelector('.order-submit');
   const status = orderForm.querySelector('.order-form-status');
   const formData = new FormData(orderForm);
+  if (productDetail) {
+    const addButton = productDetail.querySelector('.quick-add');
+    const selectedOption = addButton.dataset.option || '';
+    const alreadyInCart = cart.some((item) => item.name === addButton.dataset.product && (item.variant || '') === selectedOption);
+    if (!alreadyInCart && !addToCartFromButton(addButton)) return;
+  }
   const payload = {
     name: formData.get('name'),
     phone: formData.get('phone'),
@@ -822,7 +840,6 @@ orderForm.addEventListener('submit', async (event) => {
     address: formData.get('address'),
     region: formData.get('region'),
     note: formData.get('note'),
-    consent: formData.get('consent') === 'on',
     items: cart.map(({ name, variant, price, quantity }) => ({ name, variant, price, quantity }))
   };
   submitButton.disabled = true;
@@ -879,6 +896,9 @@ document.addEventListener('keydown', (event) => {
 });
 
 renderCart();
+if (productDetail && document.querySelector('.product-order-form-container')) {
+  orderForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 document.querySelectorAll('.carousel-arrow').forEach((button) => {
   button.addEventListener('click', () => {
