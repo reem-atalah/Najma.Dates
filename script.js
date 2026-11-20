@@ -394,6 +394,7 @@ if (productDetail) {
     let selectedQuantity = 1;
     let displayedOptionLabel = addToCart.dataset.option || product.weight;
     const orderSummary = productDetail.querySelector('[data-direct-order-summary]');
+    const refreshShippingEstimate = () => window.setTimeout(updateShippingEstimate, 0);
     const updateOrderSummary = (show = false) => {
       if (!orderSummary) return;
       const optionLabel = addToCart.dataset.option || displayedOptionLabel;
@@ -415,6 +416,7 @@ if (productDetail) {
         quantityDisplay.textContent = currencyFormatter.format(selectedQuantity);
         addToCart.dataset.addQuantity = String(selectedQuantity);
         updateOrderSummary();
+        refreshShippingEstimate();
         const nextUrl = new URL(window.location.href);
         if (selectedQuantity === 1) nextUrl.searchParams.delete('quantity');
         else nextUrl.searchParams.set('quantity', String(selectedQuantity));
@@ -492,6 +494,7 @@ if (productDetail) {
           addToCart.dataset.price = '';
           displayedOptionLabel = groupLabel;
           updateOrderSummary();
+          refreshShippingEstimate();
           priceElement.textContent = 'اختر أحد العروض لعرض السعر';
           updateProductDeal(null);
           if (optionSelection) optionSelection.textContent = 'اختر أحد العروض';
@@ -519,6 +522,7 @@ if (productDetail) {
         addToCart.dataset.price = String(selectedOption.price);
         displayedOptionLabel = selectedOption.label;
         updateOrderSummary();
+        refreshShippingEstimate();
         priceElement.textContent = `${currencyFormatter.format(selectedOption.price)} جنيه`;
         updateProductDeal(selectedOption);
         if (optionSelection) optionSelection.textContent = selectedOption.label;
@@ -814,7 +818,9 @@ function createOrderForm() {
     <button class="button order-submit" type="submit">اطلب الآن</button>
     <button class="continue-link order-cancel order-cancel-bottom" type="button">العودة إلى الحقيبة ↓</button>`;
   const directOrderSummary = document.querySelector('[data-direct-order-summary]');
-  if ((isDirectOrderPage || productOrderFormContainer) && directOrderSummary) form.prepend(directOrderSummary);
+  if ((isDirectOrderPage || productOrderFormContainer) && directOrderSummary) {
+    form.querySelector('.order-submit').before(directOrderSummary);
+  }
   (productOrderFormContainer || cartSummary).append(form);
   return form;
 }
@@ -828,7 +834,20 @@ orderForm.prepend(orderNumberDisplay);
 const checkoutButton = cartSummary.querySelector('.checkout-button');
 
 function updateShippingEstimate() {
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  let subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  let weightGrams = getCartWeightGrams();
+  if (!cart.length && productDetail) {
+    const selectedButton = productDetail.querySelector('.product-detail-buy');
+    const selectedProduct = Object.values(productCatalog).find((item) => item.name === selectedButton?.dataset.product);
+    const selectedOption = selectedProduct && getProductOption(selectedProduct, selectedButton.dataset.option || '');
+    const quantity = Number(selectedButton?.dataset.addQuantity) || 1;
+    const price = Number(selectedButton?.dataset.price);
+    const itemWeight = selectedOption?.weightGrams || selectedProduct?.weightGrams || 0;
+    if (Number.isFinite(price) && price > 0 && itemWeight > 0) {
+      subtotal = price * quantity;
+      weightGrams = itemWeight * quantity;
+    }
+  }
   const estimate = orderForm.querySelector('.order-shipping-estimate');
   const directSummary = orderForm.querySelector('[data-direct-order-summary]');
   const summaryShipping = directSummary?.querySelector('[data-direct-order-shipping]');
@@ -841,7 +860,6 @@ function updateShippingEstimate() {
     return;
   }
   const region = orderForm.elements.region.value;
-  const weightGrams = getCartWeightGrams();
   const shippingFee = window.najmaShipping.calculateShipping(region, weightGrams, subtotal);
   if (shippingFee === null) {
     estimate.textContent = 'تظهر رسوم الشحن بعد اختيار منطقة التوصيل.';
@@ -854,11 +872,13 @@ function updateShippingEstimate() {
   if (summaryTotal) summaryTotal.textContent = formatAmount(subtotal + shippingFee);
 }
 orderForm.elements.region.addEventListener('change', updateShippingEstimate);
+orderForm.elements.region.addEventListener('input', updateShippingEstimate);
 
 function showOrderForm() {
   if (!isDirectOrderPage) checkoutButton.hidden = true;
   orderForm.querySelector('[data-direct-order-summary]')?.removeAttribute('hidden');
   orderForm.hidden = false;
+  updateShippingEstimate();
   orderForm.querySelector('[name="name"]').focus();
 }
 
