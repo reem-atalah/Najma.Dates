@@ -31,7 +31,6 @@ function loadEnvFile() {
 
 loadEnvFile();
 
-const emailSender = 'reem.atalah1@gmail.com';
 const emailRecipients = [
   'emadatala@yahoo.com',
   'workraghoda@gmail.com',
@@ -293,7 +292,6 @@ function createServer({ sendMail: sendMailOverride } = {}) {
       return `- ${item.name}${option} × ${item.quantity}: ${item.price * item.quantity} جنيه`;
     }).join('\n');
     return {
-      from: emailSender,
       to: emailRecipients[0],
       bcc: emailRecipients.slice(1),
       subject: `طلب جديد ${order.orderNumber} من متجر نجمة التمور`,
@@ -317,7 +315,6 @@ function createServer({ sendMail: sendMailOverride } = {}) {
   const contactMessage = async (payload) => {
     const contact = validateContact(payload);
     return {
-      from: emailSender,
       to: emailRecipients[0],
       bcc: emailRecipients.slice(1),
       replyTo: contact.email,

@@ -2,7 +2,6 @@ import catalog from '../../product-catalog.js';
 import shipping from '../../shipping-rates.js';
 import { Resend } from 'resend';
 
-const sender = 'reem.atalah1@gmail.com';
 const recipients = [
   'emadatala@yahoo.com',
   'workraghoda@gmail.com',
@@ -133,7 +132,7 @@ export async function handleMail(request, env, type) {
   const resend = new Resend(env.RESEND_API_KEY);
   let result;
   try {
-    result = await resend.emails.send({ from: env.RESEND_FROM, to: [sender], bcc: recipients, ...email });
+    result = await resend.emails.send({ from: env.RESEND_FROM, to: recipients, ...email });
   } catch (error) {
     console.error('Resend network request failed.', error);
     return json({ error: safeMailErrorMessage(error) }, 502);

@@ -3,7 +3,7 @@ import { handleMail } from '../functions/_shared/mail.js';
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
-    if (['/product-majdool-premium', '/product-majdool-jumbo', '/product-siwi-premium'].includes(pathname)) {
+    if (['/product', '/product-majdool-premium', '/product-majdool-jumbo', '/product-siwi-premium'].includes(pathname)) {
       const assetUrl = new URL(request.url);
       assetUrl.pathname = '/product.html';
       return env.ASSETS.fetch(new Request(assetUrl, request));

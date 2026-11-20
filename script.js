@@ -285,9 +285,18 @@ if (isDirectOrderPage) {
 if (productDetail) {
   const productUrl = new URL(window.location.href);
   const cleanProductId = productUrl.pathname.match(/^\/product-([^/.]+)$/)?.[1];
-  const productId = productUrl.searchParams.get('product') || cleanProductId || document.body.dataset.productId;
-  const product = productCatalog[productId];
   const premiumVariantAliases = { 'jumbo-1k': 'jumbo-1kg' };
+  const variantCandidates = [
+    productUrl.searchParams.get('variant'),
+    ...[...productUrl.searchParams.keys()].filter((key) => key !== 'product' && key !== 'variant')
+  ].filter(Boolean).map((variant) => premiumVariantAliases[variant] || variant);
+  const inferredProductId = Object.entries(productCatalog).find(([, candidate]) => {
+    const options = candidate.options.flatMap((option) => option.children || [option]);
+    return variantCandidates.some((variant) => options.some((option) => option.id === variant));
+  })?.[0];
+  const productId = productUrl.searchParams.get('product') || cleanProductId || document.body.dataset.productId
+    || (productUrl.pathname === '/product' ? inferredProductId : undefined);
+  const product = productCatalog[productId];
   const cleanProductPaths = {
     'majdool-premium': '/product-majdool-premium',
     'majdool-jumbo': '/product-majdool-jumbo',

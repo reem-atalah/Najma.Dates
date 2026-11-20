@@ -21,8 +21,8 @@ The Worker name in `wrangler.jsonc` must exactly match the Worker name in the Cl
 
 1. Verify your sending domain in Resend and use its DNS instructions. Keep existing mailbox MX records unless Resend explicitly tells you to change them.
 2. In the Worker dashboard, add these under **Settings → Variables and Secrets** as runtime secrets/variables:
-   - `RESEND_API_KEY`: your Resend API key.
-   - `RESEND_FROM`: a sender address on the domain verified in Resend, such as `Najma Dates <orders@your-verified-domain>`.
+   - `RESEND_API_KEY`: your Resend API key, stored as a secret.
+   - `RESEND_FROM`: the sender address is defined in `wrangler.jsonc` as `Najma Dates <info@najma-dates.com>` so it stays in sync with each deployment.
 3. Remove the old `SMTP_USER` and `SMTP_APP_PASSWORD` build variables; this Worker uses Resend instead.
 4. Deploy, then submit a test contact message and order and confirm receipt in the team inboxes.
 
