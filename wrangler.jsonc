@@ -10,6 +10,6 @@
   "assets": {
     "directory": "./",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/product", "/product-majdool-premium*", "/product-majdool-jumbo*", "/product-siwi-premium*"]
+    "run_worker_first": ["/api/*", "/product*", "/product-majdool-premium*", "/product-majdool-jumbo*", "/product-siwi-premium*"]
   }
 }
