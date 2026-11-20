@@ -392,6 +392,20 @@ if (productDetail) {
     addToCart.dataset.addQuantity = '1';
     addToCart.setAttribute('aria-label', `أضف ${product.name} إلى الحقيبة`);
     let selectedQuantity = 1;
+    let displayedOptionLabel = addToCart.dataset.option || product.weight;
+    const orderSummary = productDetail.querySelector('[data-direct-order-summary]');
+    const updateOrderSummary = (show = false) => {
+      if (!orderSummary) return;
+      const optionLabel = addToCart.dataset.option || displayedOptionLabel;
+      const optionPrice = Number(addToCart.dataset.price);
+      orderSummary.querySelector('[data-direct-order-name]').textContent = product.name;
+      orderSummary.querySelector('[data-direct-order-option]').textContent = optionLabel;
+      orderSummary.querySelector('[data-direct-order-quantity]').textContent = currencyFormatter.format(selectedQuantity);
+      orderSummary.querySelector('[data-direct-order-subtotal]').textContent = Number.isFinite(optionPrice) && optionPrice > 0
+        ? `${currencyFormatter.format(optionPrice * selectedQuantity)} جنيه`
+        : 'يتحدد بعد اختيار العرض';
+      if (isDirectOrderPage || show) orderSummary.hidden = false;
+    };
     const quantityDisplay = productDetail.querySelector('[data-product-quantity-value]');
     productDetail.querySelectorAll('[data-product-quantity]').forEach((button) => {
       button.addEventListener('click', () => {
@@ -400,6 +414,7 @@ if (productDetail) {
           : Math.max(1, selectedQuantity - 1);
         quantityDisplay.textContent = currencyFormatter.format(selectedQuantity);
         addToCart.dataset.addQuantity = String(selectedQuantity);
+        updateOrderSummary();
         const nextUrl = new URL(window.location.href);
         if (selectedQuantity === 1) nextUrl.searchParams.delete('quantity');
         else nextUrl.searchParams.set('quantity', String(selectedQuantity));
@@ -475,6 +490,8 @@ if (productDetail) {
           optionSubgroup.hidden = false;
           addToCart.dataset.option = '';
           addToCart.dataset.price = '';
+          displayedOptionLabel = groupLabel;
+          updateOrderSummary();
           priceElement.textContent = 'اختر أحد العروض لعرض السعر';
           updateProductDeal(null);
           if (optionSelection) optionSelection.textContent = 'اختر أحد العروض';
@@ -500,6 +517,8 @@ if (productDetail) {
         selectedButton.setAttribute('aria-pressed', 'true');
         addToCart.dataset.option = selectedOption.label;
         addToCart.dataset.price = String(selectedOption.price);
+        displayedOptionLabel = selectedOption.label;
+        updateOrderSummary();
         priceElement.textContent = `${currencyFormatter.format(selectedOption.price)} جنيه`;
         updateProductDeal(selectedOption);
         if (optionSelection) optionSelection.textContent = selectedOption.label;
@@ -547,6 +566,7 @@ if (productDetail) {
           : productId === 'siwi-premium' ? '5kg' : null;
       const preferred = preferredId && getProductOption(product, preferredId);
       if (preferred) {
+        displayedOptionLabel = preferred.label;
         addToCart.dataset.option = preferred.label;
         addToCart.dataset.price = String(preferred.price);
         priceElement.textContent = `${currencyFormatter.format(preferred.price)} جنيه`;
@@ -563,23 +583,7 @@ if (productDetail) {
         }
       }
     }
-    if (isDirectOrderPage) {
-      const summary = productDetail.querySelector('[data-direct-order-summary]');
-      const selectedOptionLabel = addToCart.dataset.option || product.weight;
-      const selectedPrice = Number(addToCart.dataset.price) || product.price;
-      const summaryName = summary?.querySelector('[data-direct-order-name]');
-      const summaryOption = summary?.querySelector('[data-direct-order-option]');
-      const summaryQuantity = summary?.querySelector('[data-direct-order-quantity]');
-      const summarySubtotal = summary?.querySelector('[data-direct-order-subtotal]');
-      const summaryTotal = summary?.querySelector('[data-direct-order-total]');
-      if (summary && summaryName && summaryOption && summaryQuantity && summarySubtotal && summaryTotal) {
-        summaryName.textContent = product.name;
-        summaryOption.textContent = selectedOptionLabel;
-        summaryQuantity.textContent = currencyFormatter.format(selectedQuantity);
-        summarySubtotal.textContent = `${currencyFormatter.format(selectedPrice * selectedQuantity)} جنيه`;
-        summary.hidden = false;
-      }
-    }
+    updateOrderSummary(isDirectOrderPage || Boolean(productDetail.querySelector('.product-order-form-container')));
     protectDateTerms(document.body);
     protectDateTermAttributes(document.body);
   }
@@ -810,7 +814,7 @@ function createOrderForm() {
     <button class="button order-submit" type="submit">اطلب الآن</button>
     <button class="continue-link order-cancel order-cancel-bottom" type="button">العودة إلى الحقيبة ↓</button>`;
   const directOrderSummary = document.querySelector('[data-direct-order-summary]');
-  if (isDirectOrderPage && directOrderSummary) form.prepend(directOrderSummary);
+  if ((isDirectOrderPage || productOrderFormContainer) && directOrderSummary) form.prepend(directOrderSummary);
   (productOrderFormContainer || cartSummary).append(form);
   return form;
 }
@@ -853,6 +857,7 @@ orderForm.elements.region.addEventListener('change', updateShippingEstimate);
 
 function showOrderForm() {
   if (!isDirectOrderPage) checkoutButton.hidden = true;
+  orderForm.querySelector('[data-direct-order-summary]')?.removeAttribute('hidden');
   orderForm.hidden = false;
   orderForm.querySelector('[name="name"]').focus();
 }
