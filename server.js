@@ -132,6 +132,7 @@ function validateOrder(payload) {
     throw new TypeError('Order details are invalid.');
   }
   const name = cleanText(payload.name, 'Name', 80);
+  const orderNumber = cleanText(payload.orderNumber || '', 'Order number', 40);
   const phone = String(payload.phone || '').replace(/\D/g, '');
   if (!/^(?:01[0125]\d{8}|201[0125]\d{8}|1[0125]\d{8})$/.test(phone)) {
     throw new TypeError('Phone number is invalid.');
@@ -165,6 +166,7 @@ function validateOrder(payload) {
   const shippingFee = shipping.calculateShipping(region, weightGrams, subtotal);
   return {
     name,
+    orderNumber,
     phone,
     address,
     region,
@@ -208,7 +210,8 @@ async function sendWithResend(message) {
       text: message.text
     })
   } catch (cause) {
-    const error = new Error('Resend network request failed.');
+    const causeMessage = cause instanceof Error ? cause.message : 'Unknown network error.';
+    const error = new Error(`Resend network request failed: ${causeMessage}`);
     error.cause = cause;
     throw error;
   }
@@ -274,7 +277,10 @@ async function handleMailRequest(request, response, sendMail, createMessage) {
       return;
     }
     console.error('Email delivery failed.', JSON.stringify(describeMailError(error)));
-    respondJson(response, 502, { error: 'Email delivery failed. Please try again later.' });
+    const detail = String(error.message || 'Email delivery failed.')
+      .replace(/re_[A-Za-z0-9_-]+/g, '[redacted]')
+      .slice(0, 240);
+    respondJson(response, 502, { error: detail });
   }
 }
 
@@ -290,14 +296,15 @@ function createServer({ sendMail: sendMailOverride } = {}) {
       from: emailSender,
       to: emailRecipients[0],
       bcc: emailRecipients.slice(1),
-      subject: 'طلب جديد من متجر نجمة التمور',
+      subject: `طلب جديد ${order.orderNumber} من متجر نجمة التمور`,
       text: [
+        `رقم الطلب: ${order.orderNumber}`,
         'طلب جديد من متجر نجمة التمور',
         `الاسم: ${order.name}`,
         `الهاتف: ${order.phone}`,
         `منطقة التوصيل: ${order.regionLabel}`,
         `العنوان: ${order.address}`,
-        `وزن الطلب: ${(order.weightGrams / 1000).toLocaleString('ar-EG')} كجم`,
+        `وزن الطلب: ${(order.weightGrams / 1000).toLocaleString('en-US')} كجم`,
         'المنتجات:',
         products,
         `قيمة المنتجات: ${order.subtotal} جنيه`,
@@ -372,7 +379,9 @@ function createServer({ sendMail: sendMailOverride } = {}) {
       response.writeHead(400).end();
       return;
     }
-    const requestedPath = pathname === '/' ? '/index.html' : pathname;
+    const cleanProductPaths = new Set(['/product-majdool-premium', '/product-majdool-jumbo', '/product-siwi-premium']);
+    const requestedPath = pathname === '/' ? '/index.html'
+      : cleanProductPaths.has(pathname) ? '/product.html' : pathname;
     const filePath = path.resolve(root, `.${requestedPath}`);
     const extension = path.extname(filePath).toLowerCase();
     const forbiddenFiles = new Set(['.env', '.env.example', 'package.json', 'server.js', 'README.md']);

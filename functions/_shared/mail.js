@@ -22,6 +22,12 @@ function json(data, status = 200) {
   });
 }
 
+function safeMailErrorMessage(error) {
+  return String(error?.message || 'Email delivery failed. Please try again later.')
+    .replace(/re_[A-Za-z0-9_-]+/g, '[redacted]')
+    .slice(0, 240);
+}
+
 function cleanText(value, label, maxLength, required = true) {
   if (typeof value !== 'string') throw new Error(`${label} is invalid.`);
   const cleaned = value.replace(/[\r\n\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -34,15 +40,16 @@ function escapeHtml(value) {
 }
 
 function orderEmailHtml(order, logoUrl, customer = false) {
-  const rows = order.items.map((item) => `<tr><td style="padding:13px 10px;border-bottom:1px solid #eee8dc;color:#263d2e">${escapeHtml(item.name)}${item.variant ? `<br><span style="color:#817968;font-size:12px">${escapeHtml(item.variant)}</span>` : ''}</td><td style="padding:13px 10px;border-bottom:1px solid #eee8dc;text-align:center;color:#5b574e">${item.quantity}</td><td style="padding:13px 10px;border-bottom:1px solid #eee8dc;text-align:left;white-space:nowrap;color:#263d2e">${(item.price * item.quantity).toLocaleString('ar-EG')} جنيه</td></tr>`).join('');
+  const rows = order.items.map((item) => `<tr><td style="padding:13px 10px;border-bottom:1px solid #eee8dc;color:#263d2e">${escapeHtml(item.name)}${item.variant ? `<br><span style="color:#817968;font-size:12px">${escapeHtml(item.variant)}</span>` : ''}</td><td style="padding:13px 10px;border-bottom:1px solid #eee8dc;text-align:center;color:#5b574e">${item.quantity}</td><td style="padding:13px 10px;border-bottom:1px solid #eee8dc;text-align:left;white-space:nowrap;color:#263d2e">${(item.price * item.quantity).toLocaleString('en-US')} جنيه</td></tr>`).join('');
   const customerDetails = customer ? '' : `<tr><td style="padding:8px 0;color:#817968">الاسم</td><td style="padding:8px 0;text-align:left;color:#263d2e">${escapeHtml(order.name)}</td></tr><tr><td style="padding:8px 0;color:#817968">الهاتف</td><td style="padding:8px 0;text-align:left;color:#263d2e">${escapeHtml(order.phone)}</td></tr>${order.email ? `<tr><td style="padding:8px 0;color:#817968">البريد الإلكتروني</td><td style="padding:8px 0;text-align:left;color:#263d2e">${escapeHtml(order.email)}</td></tr>` : ''}<tr><td style="padding:8px 0;color:#817968">منطقة التوصيل</td><td style="padding:8px 0;text-align:left;color:#263d2e">${escapeHtml(order.regionLabel)}</td></tr><tr><td style="padding:8px 0;color:#817968">العنوان</td><td style="padding:8px 0;text-align:left;color:#263d2e">${escapeHtml(order.address)}</td></tr>${order.note ? `<tr><td style="padding:8px 0;color:#817968">ملاحظة</td><td style="padding:8px 0;text-align:left;color:#263d2e">${escapeHtml(order.note)}</td></tr>` : ''}`;
   const greeting = customer ? `شكرًا لثقتكم بنا${order.name ? ` يا ${escapeHtml(order.name)}` : ''}. استلمنا طلبكم، وهذه تفاصيله:` : 'وصل طلب جديد إلى متجر نجمة التمور.';
-  return `<div dir="rtl" style="margin:0;background:#f7f4ec;padding:30px 12px;font-family:Arial,Tahoma,sans-serif;color:#263d2e"><div style="max-width:620px;margin:0 auto;background:#fffefa;border:1px solid #e9e1d2"><div style="padding:28px 30px 22px;text-align:center;border-bottom:1px solid #eee8dc"><img src="${escapeHtml(logoUrl)}" alt="نجمة التمور" width="126" style="display:block;width:126px;height:auto;margin:0 auto 16px"><div style="color:#a57640;font-size:10px;letter-spacing:3px">NAJMA DATES · نجمة التمور</div></div><div style="padding:30px"><div style="width:36px;border-top:2px solid #c8a55f;margin:0 0 17px"></div><h1 style="font-family:Georgia,serif;font-weight:400;font-size:27px;line-height:1.4;margin:0 0 12px;color:#263d2e">${customer ? 'تفاصيل طلبكم' : 'طلب جديد'}</h1><p style="margin:0 0 25px;color:#686b5c;line-height:1.9;font-size:14px">${greeting}</p>${customerDetails ? `<h2 style="font-size:15px;margin:0 0 8px;color:#263d2e">بيانات الطلب</h2><table role="presentation" style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:25px">${customerDetails}</table>` : ''}<h2 style="font-size:15px;margin:0 0 8px;color:#263d2e">المنتجات</h2><table role="presentation" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f7f4ec"><th style="padding:10px;text-align:right;font-weight:600">المنتج</th><th style="padding:10px;text-align:center;font-weight:600">الكمية</th><th style="padding:10px;text-align:left;font-weight:600">السعر</th></tr></thead><tbody>${rows}</tbody></table><table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px"><tr><td style="padding:7px 0;color:#817968">قيمة المنتجات</td><td style="padding:7px 0;text-align:left">${order.subtotal.toLocaleString('ar-EG')} جنيه</td></tr><tr><td style="padding:7px 0;color:#817968">الشحن</td><td style="padding:7px 0;text-align:left">${order.shippingFee === 0 ? 'مجاني' : `${order.shippingFee.toLocaleString('ar-EG')} جنيه`}</td></tr><tr><td style="padding:13px 0;border-top:1px solid #d9cba9;font-weight:700;font-size:15px">الإجمالي</td><td style="padding:13px 0;border-top:1px solid #d9cba9;text-align:left;font-weight:700;font-size:15px;color:#9a673e">${order.total.toLocaleString('ar-EG')} جنيه</td></tr></table><p style="margin:25px 0 0;padding-top:18px;border-top:1px solid #eee8dc;color:#817968;font-size:12px;line-height:1.8">${customer ? 'سنعاود التواصل معكم لتأكيد الطلب. لأي استفسار، يسعدنا تواصلكم معنا.' : `وزن الطلب: ${(order.weightGrams / 1000).toLocaleString('ar-EG')} كجم`}</p></div><div style="padding:17px 25px;background:#263d2e;color:#f8f6ea;text-align:center;font-size:11px;letter-spacing:.5px">طعام طيب نزرعه بعناية · من مزرعتنا إلى مائدتكم</div></div></div>`;
+  return `<div dir="rtl" style="margin:0;background:#f7f4ec;padding:30px 12px;font-family:Arial,Tahoma,sans-serif;color:#263d2e"><div style="max-width:620px;margin:0 auto;background:#fffefa;border:1px solid #e9e1d2"><div style="padding:28px 30px 22px;text-align:center;border-bottom:1px solid #eee8dc"><img src="${escapeHtml(logoUrl)}" alt="نجمة التمور" width="126" style="display:block;width:126px;height:auto;margin:0 auto 16px"><div style="color:#a57640;font-size:10px;letter-spacing:3px">NAJMA DATES · نجمة التمور</div></div><div style="padding:30px"><div style="width:36px;border-top:2px solid #c8a55f;margin:0 0 17px"></div><h1 style="font-family:Georgia,serif;font-weight:400;font-size:27px;line-height:1.4;margin:0 0 12px;color:#263d2e">${customer ? 'تفاصيل طلبكم' : 'طلب جديد'}</h1><p style="font-weight:700;color:#9a673e">رقم الطلب: ${escapeHtml(order.orderNumber)}</p><p style="margin:0 0 25px;color:#686b5c;line-height:1.9;font-size:14px">${greeting}</p>${customerDetails ? `<h2 style="font-size:15px;margin:0 0 8px;color:#263d2e">بيانات الطلب</h2><table role="presentation" style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:25px">${customerDetails}</table>` : ''}<h2 style="font-size:15px;margin:0 0 8px;color:#263d2e">المنتجات</h2><table role="presentation" style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f7f4ec"><th style="padding:10px;text-align:right;font-weight:600">المنتج</th><th style="padding:10px;text-align:center;font-weight:600">الكمية</th><th style="padding:10px;text-align:left;font-weight:600">السعر</th></tr></thead><tbody>${rows}</tbody></table><table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px"><tr><td style="padding:7px 0;color:#817968">قيمة المنتجات</td><td style="padding:7px 0;text-align:left">${order.subtotal.toLocaleString('en-US')} جنيه</td></tr><tr><td style="padding:7px 0;color:#817968">الشحن</td><td style="padding:7px 0;text-align:left">${order.shippingFee === 0 ? 'مجاني' : `${order.shippingFee.toLocaleString('en-US')} جنيه`}</td></tr><tr><td style="padding:13px 0;border-top:1px solid #d9cba9;font-weight:700;font-size:15px">الإجمالي</td><td style="padding:13px 0;border-top:1px solid #d9cba9;text-align:left;font-weight:700;font-size:15px;color:#9a673e">${order.total.toLocaleString('en-US')} جنيه</td></tr></table><p style="margin:25px 0 0;padding-top:18px;border-top:1px solid #eee8dc;color:#817968;font-size:12px;line-height:1.8">${customer ? 'سنعاود التواصل معكم لتأكيد الطلب. لأي استفسار، يسعدنا تواصلكم معنا.' : `وزن الطلب: ${(order.weightGrams / 1000).toLocaleString('en-US')} كجم`}</p></div><div style="padding:17px 25px;background:#263d2e;color:#f8f6ea;text-align:center;font-size:11px;letter-spacing:.5px">طعام طيب نزرعه بعناية · من مزرعتنا إلى مائدتكم</div></div></div>`;
 }
 
 function validateOrder(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Order details are invalid.');
   const name = cleanText(payload.name, 'Name', 80);
+  const orderNumber = cleanText(payload.orderNumber || '', 'Order number', 40);
   const phone = String(payload.phone || '').replace(/\D/g, '');
   if (!/^(?:01[0125]\d{8}|201[0125]\d{8}|1[0125]\d{8})$/.test(phone)) throw new Error('Phone number is invalid.');
   const address = cleanText(payload.address, 'Address', 240);
@@ -65,7 +72,7 @@ function validateOrder(payload) {
   const weightGrams = items.reduce((sum, item) => sum + item.weightGrams * item.quantity, 0);
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingFee = shipping.calculateShipping(region, weightGrams, subtotal);
-  return { name, phone, email, address, regionLabel: selectedRegion.label, note, items, weightGrams, subtotal, shippingFee, total: subtotal + shippingFee };
+  return { name, orderNumber, phone, email, address, regionLabel: selectedRegion.label, note, items, weightGrams, subtotal, shippingFee, total: subtotal + shippingFee };
 }
 
 function validateContact(payload) {
@@ -107,10 +114,10 @@ export async function handleMail(request, env, type) {
       const logoUrl = new URL('/logo%20bg%20removed.png', request.url).href;
       const products = order.items.map((item) => `- ${item.name}${item.variant ? ` (${item.variant})` : ''} × ${item.quantity}: ${item.price * item.quantity} جنيه`).join('\n');
       email = {
-        subject: 'طلب جديد من متجر نجمة التمور',
+        subject: `طلب جديد ${order.orderNumber} من متجر نجمة التمور`,
         replyTo: order.email || undefined,
         html: orderEmailHtml(order, logoUrl),
-        text: ['طلب جديد من متجر نجمة التمور', `الاسم: ${order.name}`, `الهاتف: ${order.phone}`, order.email ? `البريد الإلكتروني: ${order.email}` : '', `منطقة التوصيل: ${order.regionLabel}`, `العنوان: ${order.address}`, `وزن الطلب: ${(order.weightGrams / 1000).toLocaleString('ar-EG')} كجم`, 'المنتجات:', products, `قيمة المنتجات: ${order.subtotal} جنيه`, `الشحن: ${order.shippingFee === 0 ? 'مجاني' : `${order.shippingFee} جنيه`}`, `الإجمالي شامل الشحن: ${order.total} جنيه`, order.note ? `ملاحظة: ${order.note}` : ''].filter(Boolean).join('\n')
+        text: [`رقم الطلب: ${order.orderNumber}`, 'طلب جديد من متجر نجمة التمور', `الاسم: ${order.name}`, `الهاتف: ${order.phone}`, order.email ? `البريد الإلكتروني: ${order.email}` : '', `منطقة التوصيل: ${order.regionLabel}`, `العنوان: ${order.address}`, `وزن الطلب: ${(order.weightGrams / 1000).toLocaleString('en-US')} كجم`, 'المنتجات:', products, `قيمة المنتجات: ${order.subtotal} جنيه`, `الشحن: ${order.shippingFee === 0 ? 'مجاني' : `${order.shippingFee} جنيه`}`, `الإجمالي شامل الشحن: ${order.total} جنيه`, order.note ? `ملاحظة: ${order.note}` : ''].filter(Boolean).join('\n')
       };
     } else {
       const contact = validateContact(payload);
@@ -129,16 +136,16 @@ export async function handleMail(request, env, type) {
     result = await resend.emails.send({ from: env.RESEND_FROM, to: [sender], bcc: recipients, ...email });
   } catch (error) {
     console.error('Resend network request failed.', error);
-    return json({ error: 'Email delivery failed. Please try again later.' }, 502);
+    return json({ error: safeMailErrorMessage(error) }, 502);
   }
   if (result.error) {
     console.error('Resend delivery failed.', result.error);
-    return json({ error: 'Email delivery failed. Please try again later.' }, 502);
+    return json({ error: safeMailErrorMessage(result.error) }, 502);
   }
   if (type === 'orders' && orderConfirmation?.email) {
     try {
       const logoUrl = new URL('/logo%20bg%20removed.png', request.url).href;
-      const confirmation = await resend.emails.send({ from: env.RESEND_FROM, to: [orderConfirmation.email], subject: 'تفاصيل طلبكم من نجمة التمور', html: orderEmailHtml(orderConfirmation, logoUrl, true), text: `شكرًا لثقتكم بنا. استلمنا طلبكم بإجمالي ${orderConfirmation.total} جنيه شامل الشحن. سنعاود التواصل معكم لتأكيد الطلب.` });
+      const confirmation = await resend.emails.send({ from: env.RESEND_FROM, to: [orderConfirmation.email], subject: `تفاصيل طلبكم ${orderConfirmation.orderNumber} من نجمة التمور`, html: orderEmailHtml(orderConfirmation, logoUrl, true), text: `رقم طلبكم: ${orderConfirmation.orderNumber}. شكرًا لثقتكم بنا. استلمنا طلبكم بإجمالي ${orderConfirmation.total} جنيه شامل الشحن. سنعاود التواصل معكم لتأكيد الطلب.` });
       if (confirmation.error) console.error('Customer order confirmation failed.', confirmation.error);
     } catch (error) {
       console.error('Customer order confirmation failed.', error);

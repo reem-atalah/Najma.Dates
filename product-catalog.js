@@ -14,8 +14,8 @@
         'photo_6046412473952309928_y.jpg'
       ],
       options: [
-        { id: 'large-1kg', label: '١ كجم — لارج', legacyLabels: ['لارج'], price: 350, weightGrams: 1000 },
-        { id: 'jumbo-1kg', label: '١ كجم — جامبو', legacyLabels: ['جامبو'], price: 450, weightGrams: 1000 },
+        { id: 'jumbo-1kg', label: '1 كجم — جامبو', legacyLabels: ['جامبو'], price: 450, originalPrice: 700, weightGrams: 1000 },
+        { id: 'large-1kg', label: '1 كجم — لارج', legacyLabels: ['لارج'], price: 350, originalPrice: 550, weightGrams: 1000 },
         {
           label: 'عروض',
           isOfferGroup: true,
@@ -25,23 +25,25 @@
               isOffer: true,
               label: 'عرض العيلة (3 عبوات لارج = 3 كجم)',
               price: 1000,
+              originalPrice: 1650,
               weightGrams: 3000,
-              content: 'بـ 1000 جنيه بدلاً من 1050 جنيه'
+              content: 'بـ 1000 جنيه بدلاً من 1650 جنيه'
             },
             {
               id: 'family-jumbo',
               isOffer: true,
               label: 'عرض العيلة (3 عبوات جامبو = 3 كجم)',
               price: 1250,
+              originalPrice: 2100,
               weightGrams: 3000,
-              content: 'بـ 1250 جنيه بدلاً من 1350 جنيه. (يبقى وفرت حوالى 200 جنيه)'
+              content: 'بـ 1250 جنيه بدلاً من 2100 جنيه'
             }
           ]
         }
       ],
       category: 'تمور المجدول',
       categoryUrl: 'majdool-dates.html',
-      weight: 'اختاروا العبوة',
+      weight: 'اختر العبوة',
       description: 'تمر مجدول بريميوم مختار بعناية، بطعمه الغني وقوامه الطري.'
     },
     'majdool-jumbo': {
@@ -53,20 +55,43 @@
         'WhatsApp%20Imag%202026-11-09%20at%203.25.56%20AM.jpeg'
       ],
       options: [
-        { id: '800g', label: '800 جم', price: 400, weightGrams: 800 },
+        { id: '800g', label: '800 جم', price: 400, originalPrice: 600, weightGrams: 800 },
         {
           id: 'jumbo-saver',
           isOffer: true,
           label: 'عرض التوفير (3 عبوات = 2.4 كجم)',
-          price: 1150,
+          price: 1100,
+          originalPrice: 1800,
           weightGrams: 2400,
-          content: 'بـ 1150 جنيه بدلا من 1200 جنيه'
+          content: 'بـ 1100 جنيه بدلا من 1800 جنيه'
         }
       ],
       category: 'تمور المجدول',
       categoryUrl: 'majdool-dates.html',
-      weight: '٨٠٠ جم',
+      weight: '800 جم',
       description: 'حبات مجدول جامبو طرية وغنية، مناسبة للمشاركة والاستمتاع بها في أي وقت.'
+    },
+    'gift-jumbo-fresh-700': {
+      name: 'عرض ال700 - جامبو + فريش جوسي',
+      image: 'photo_6046412473952309919_y.jpg',
+      options: [
+        { id: 'jumbo-plus-fresh', label: 'كرتونة جامبو + علبة فريش جوسي', price: 700, weightGrams: 1800 }
+      ],
+      category: 'عروض الهدايا',
+      categoryUrl: 'gift-offers.html',
+      weight: '1.8 كجم',
+      description: 'كرتونة مجدول بريميوم جامبو مع علبة مجدول فريش جوسي.'
+    },
+    'gift-fresh-free-700': {
+      name: 'عرض ال700 - علبة فريش جوسي والثانية هدية',
+      image: 'photo_6032724400295055833_y%20%281%29.jpg',
+      options: [
+        { id: 'fresh-plus-gift', label: 'علبتان فريش جوسي، واحدة هدية', price: 700, weightGrams: 1600 }
+      ],
+      category: 'عروض الهدايا',
+      categoryUrl: 'gift-offers.html',
+      weight: '1.6 كجم',
+      description: 'علبتان من مجدول فريش جوسي، والثانية هدية.'
     },
     'siwi-premium': {
       name: 'تمر سيوي درجة اولى',
@@ -80,7 +105,7 @@
       ],
       category: 'التمر السيوي',
       categoryUrl: 'siwi-dates.html',
-      weight: 'اختاروا العبوة',
+      weight: 'اختر العبوة',
       description: 'تمر سيوي درجة أولى مختار بعناية، من محصول مصري بطعمه الطبيعي.'
     }
   };

@@ -1,4 +1,6 @@
 const header = document.querySelector('.site-header');
+const whiteFridayOverlay = document.querySelector('[data-white-friday-overlay]');
+document.querySelector('[data-white-friday-dismiss]')?.addEventListener('click', () => whiteFridayOverlay?.remove());
 const menuToggle = document.querySelector('.menu-toggle');
 const searchPanel = document.querySelector('.search-panel');
 const searchToggle = document.querySelector('.search-toggle');
@@ -13,7 +15,10 @@ const cartEmpty = document.querySelector('.cart-empty');
 const cartSummary = document.querySelector('.cart-summary');
 const toast = document.querySelector('.toast');
 const cart = [];
-const currencyFormatter = new Intl.NumberFormat('ar-EG');
+const temporaryStockLimits = { 'مجدول بريميوم|1 كجم — لارج': 4 };
+const stockKey = (item) => `${item.name}|${item.variant || ''}`;
+const stockInCart = (key) => cart.reduce((sum, item) => sum + (stockKey(item) === key ? item.quantity : 0), 0);
+const currencyFormatter = new Intl.NumberFormat('en-US');
 // Keep mail requests on the same Cloudflare Pages origin as the storefront.
 const API_BASE_URL = '';
 let originalPageTitle = document.title;
@@ -21,6 +26,15 @@ const arabicGlossaryPattern = /(^|[^\u0621-\u064A])((?:وبال|وفال|وكا�
 const productCatalog = window.productCatalog;
 let toastTimer;
 const dateTermAttributes = ['alt', 'aria-label', 'title', 'placeholder'];
+
+document.querySelectorAll('.announcement').forEach((announcement) => {
+  if (announcement.querySelector('.white-friday-announcement')) return;
+  const link = document.createElement('a');
+  link.className = 'white-friday-announcement';
+  link.href = 'offers.html';
+  link.textContent = 'عروض الجمعة البيضاء';
+  announcement.append(link);
+});
 
 document.querySelectorAll('.main-nav').forEach((nav) => {
   if (nav.querySelector('a[href="offers.html"]')) return;
@@ -39,6 +53,15 @@ document.querySelectorAll('.mobile-nav').forEach((nav) => {
   nav.insertBefore(offersLink, nav.querySelector('button') || null);
 });
 
+document.querySelectorAll('.main-nav, .mobile-nav').forEach((nav) => {
+  if (nav.querySelector('a[href="gift-offers.html"]')) return;
+  const giftLink = document.createElement('a');
+  giftLink.href = 'gift-offers.html';
+  giftLink.textContent = 'هدايا';
+  const offersLink = nav.querySelector('a[href="offers.html"]');
+  nav.insertBefore(giftLink, offersLink?.nextSibling || null);
+});
+
 searchResults.className = 'search-results';
 searchResults.id = 'site-search-results';
 searchResults.setAttribute('role', 'status');
@@ -53,7 +76,7 @@ function normalizeSearchText(value) {
     .replace(/[أإآٱ]/g, 'ا')
     .replace(/ى/g, 'ي')
     .replace(/[ًٌٍَُِّْـ]/g, '')
-    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
+    .replace(/[0-9]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
     .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
     .trim();
 }
@@ -253,10 +276,28 @@ protectDateTerms(document.body);
 protectDateTermAttributes(document.body);
 
 const productDetail = document.querySelector('[data-product-detail]');
+const directOrderUrl = new URL(window.location.href);
+const isDirectOrderPage = directOrderUrl.pathname.endsWith('/order.html') || directOrderUrl.pathname === '/order.html';
+if (isDirectOrderPage) {
+  document.body.dataset.productId = directOrderUrl.searchParams.get('product') || 'majdool-premium';
+  document.body.dataset.productVariant = directOrderUrl.searchParams.get('variant') || 'jumbo-1kg';
+}
 if (productDetail) {
   const productUrl = new URL(window.location.href);
-  const productId = productUrl.searchParams.get('product') || document.body.dataset.productId;
+  const cleanProductId = productUrl.pathname.match(/^\/product-([^/.]+)$/)?.[1];
+  const productId = productUrl.searchParams.get('product') || cleanProductId || document.body.dataset.productId;
   const product = productCatalog[productId];
+  const premiumVariantAliases = { 'jumbo-1k': 'jumbo-1kg' };
+  const cleanProductPaths = {
+    'majdool-premium': '/product-majdool-premium',
+    'majdool-jumbo': '/product-majdool-jumbo',
+    'siwi-premium': '/product-siwi-premium'
+  };
+  const bareVariant = product && [...productUrl.searchParams.keys()].find((key) => (
+    getProductOption(product, premiumVariantAliases[key] || key)
+  ));
+  const requestedVariant = productUrl.searchParams.get('variant')
+    || (bareVariant ? (premiumVariantAliases[bareVariant] || bareVariant) : '');
   const notFound = document.querySelector('[data-product-not-found]');
   if (!product) {
     productDetail.hidden = true;
@@ -271,9 +312,34 @@ if (productDetail) {
     productDetail.querySelector('.product-detail-description').textContent = product.description;
     productDetail.querySelector('.product-detail-weight').textContent = product.weight;
     const priceElement = productDetail.querySelector('.product-detail-price');
+    const dealElement = document.createElement('div');
+    dealElement.className = 'product-detail-deal';
+    dealElement.hidden = true;
+    priceElement.insertAdjacentElement('afterend', dealElement);
+    const updateProductDeal = (option) => {
+      const originalPrice = option?.originalPrice ?? product.originalPrice;
+      const currentPrice = option?.price ?? product.price;
+      if (!Number.isFinite(originalPrice) || !Number.isFinite(currentPrice) || originalPrice <= currentPrice) {
+        dealElement.hidden = true;
+        dealElement.replaceChildren();
+        return;
+      }
+      const savedAmount = originalPrice - currentPrice;
+      const percentSaved = Math.round((savedAmount / originalPrice) * 100);
+      const oldPrice = document.createElement('del');
+      oldPrice.textContent = `${currencyFormatter.format(originalPrice)} جنيه`;
+      const savings = document.createElement('span');
+      savings.className = 'product-detail-savings';
+      savings.textContent = `التوفير: ${currencyFormatter.format(savedAmount)} جنيه`;
+      const discount = document.createElement('span');
+      discount.className = 'discount-badge';
+      discount.textContent = `-${currencyFormatter.format(percentSaved)}% وفر`;
+      dealElement.replaceChildren(oldPrice, savings, discount);
+      dealElement.hidden = false;
+    };
     const hasOptions = Boolean(product.options);
     priceElement.textContent = hasOptions
-      ? 'اختاروا خيارًا لعرض السعر'
+      ? 'اختر خيارًا لعرض السعر'
       : `${currencyFormatter.format(product.price)} جنيه`;
     const image = productDetail.querySelector('.product-detail-image');
     const productImages = product.images?.length ? product.images : [product.image];
@@ -341,19 +407,14 @@ if (productDetail) {
     let optionButtons;
     let subOptionButtons;
     if (hasOptions) {
-      let restoringProductUrl = Boolean(productUrl.searchParams.get('variant') || document.body.dataset.productVariant);
       optionGroup.hidden = false;
       optionButtons = optionGroup.querySelector('[data-option-buttons]');
       const optionSubgroup = optionGroup.querySelector('[data-option-subgroup]');
       subOptionButtons = optionSubgroup.querySelector('[data-sub-option-buttons]');
       const optionContent = optionGroup.querySelector('[data-option-content]');
       product.options.forEach((option) => {
-        const optionButton = document.createElement(option.children ? 'button' : 'a');
-        if (option.children) {
-          optionButton.type = 'button';
-        } else {
-          optionButton.href = `product-${productId}-${option.id}.html`;
-        }
+        const optionButton = document.createElement('button');
+        optionButton.type = 'button';
         optionButton.className = 'product-option-button';
         optionButton.dataset.productOptionGroup = option.label;
         optionButton.dataset.productOptionId = option.id || '';
@@ -367,8 +428,8 @@ if (productDetail) {
         optionButtons.append(optionButton);
 
         option.children?.forEach((child) => {
-          const subOptionButton = document.createElement('a');
-          subOptionButton.href = `product-${productId}-${child.id}.html`;
+          const subOptionButton = document.createElement('button');
+          subOptionButton.type = 'button';
           subOptionButton.className = 'product-option-button';
           subOptionButton.dataset.productOption = child.label;
           subOptionButton.dataset.productOptionGroup = option.label;
@@ -382,11 +443,6 @@ if (productDetail) {
       optionGroup.addEventListener('click', (event) => {
         const selectedButton = event.target.closest('[data-product-option-group]');
         if (!selectedButton) return;
-        if (selectedButton.tagName === 'A') {
-          if (event.isTrusted) return;
-          event.preventDefault();
-        }
-
         const groupLabel = selectedButton.dataset.productOptionGroup;
         const isOfferGroup = selectedButton.hasAttribute('aria-expanded');
         const optionSelection = optionGroup.querySelector('[data-option-selection]');
@@ -410,16 +466,20 @@ if (productDetail) {
           optionSubgroup.hidden = false;
           addToCart.dataset.option = '';
           addToCart.dataset.price = '';
-          priceElement.textContent = 'اختاروا أحد العروض لعرض السعر';
-          if (optionSelection) optionSelection.textContent = 'اختاروا أحد العروض';
+          priceElement.textContent = 'اختر أحد العروض لعرض السعر';
+          updateProductDeal(null);
+          if (optionSelection) optionSelection.textContent = 'اختر أحد العروض';
           if (optionContent) optionContent.hidden = true;
           productDetail.querySelector('.product-detail-weight').textContent = groupLabel;
-          if (!restoringProductUrl) {
-            const nextUrl = new URL(window.location.href);
+          const nextUrl = new URL(window.location.href);
+          if (cleanProductPaths[productId] && !isDirectOrderPage) {
+            nextUrl.pathname = cleanProductPaths[productId];
+            nextUrl.search = `group=${encodeURIComponent(groupLabel)}`;
+          } else {
             nextUrl.searchParams.set('group', groupLabel);
             nextUrl.searchParams.delete('variant');
-            window.history.replaceState({}, '', nextUrl);
           }
+          window.history.replaceState({}, '', nextUrl);
           return;
         }
 
@@ -432,24 +492,25 @@ if (productDetail) {
         addToCart.dataset.option = selectedOption.label;
         addToCart.dataset.price = String(selectedOption.price);
         priceElement.textContent = `${currencyFormatter.format(selectedOption.price)} جنيه`;
+        updateProductDeal(selectedOption);
         if (optionSelection) optionSelection.textContent = selectedOption.label;
         productDetail.querySelector('.product-detail-weight').textContent = selectedOption.label;
         if (optionContent) {
           optionContent.textContent = selectedOption.content || '';
           optionContent.hidden = !selectedOption.content;
         }
-        if (!restoringProductUrl) {
-          const nextUrl = new URL(window.location.href);
+        const nextUrl = new URL(window.location.href);
+        if (cleanProductPaths[productId] && !isDirectOrderPage) {
+          nextUrl.pathname = cleanProductPaths[productId];
+          nextUrl.search = selectedOption.id === 'jumbo-1kg' ? 'jumbo-1k' : (selectedOption.id || selectedOption.label);
+        } else {
           nextUrl.searchParams.set('variant', selectedOption.id || selectedOption.label);
           nextUrl.searchParams.delete('group');
-          window.history.replaceState({}, '', nextUrl);
         }
-        if (selectedOption.id && document.body.dataset.productVariant !== selectedOption.id) {
-          window.location.assign(`product-${productId}-${selectedOption.id}.html`);
-        }
+        window.history.replaceState({}, '', nextUrl);
       });
     }
-    const initialVariant = productUrl.searchParams.get('variant') || document.body.dataset.productVariant;
+    const initialVariant = requestedVariant || document.body.dataset.productVariant;
     const initialOption = initialVariant && getProductOption(product, initialVariant);
     if (initialOption) {
       const parentGroup = product.options.find((option) => option.children?.includes(initialOption));
@@ -465,7 +526,50 @@ if (productDetail) {
           .find((button) => button.dataset.productOption === initialOption.label);
         variantButton?.click();
       }
-      restoringProductUrl = false;
+      if (cleanProductPaths[productId] && !isDirectOrderPage) {
+        const canonicalUrl = new URL(cleanProductPaths[productId], window.location.origin);
+        canonicalUrl.search = initialOption.id === 'jumbo-1kg' ? 'jumbo-1k' : (initialOption.id || initialOption.label);
+        window.history.replaceState({}, '', canonicalUrl);
+      }
+    }
+    if (!initialOption) {
+      const preferredId = productId === 'majdool-premium' ? 'jumbo-1kg'
+        : productId === 'majdool-jumbo' ? '800g'
+          : productId === 'siwi-premium' ? '5kg' : null;
+      const preferred = preferredId && getProductOption(product, preferredId);
+      if (preferred) {
+        addToCart.dataset.option = preferred.label;
+        addToCart.dataset.price = String(preferred.price);
+        priceElement.textContent = `${currencyFormatter.format(preferred.price)} جنيه`;
+        updateProductDeal(preferred);
+        productDetail.querySelector('.product-detail-weight').textContent = preferred.label;
+        const preferredButton = [...optionButtons.querySelectorAll('[data-product-option]')]
+          .find((button) => button.dataset.productOption === preferred.label);
+        preferredButton?.classList.add('is-selected');
+        preferredButton?.setAttribute('aria-pressed', 'true');
+        if (cleanProductPaths[productId] && !isDirectOrderPage) {
+          const variantUrl = new URL(cleanProductPaths[productId], window.location.origin);
+          variantUrl.search = preferred.id === 'jumbo-1kg' ? 'jumbo-1k' : preferred.id;
+          window.history.replaceState({}, '', variantUrl);
+        }
+      }
+    }
+    if (isDirectOrderPage) {
+      const summary = productDetail.querySelector('[data-direct-order-summary]');
+      const selectedOptionLabel = addToCart.dataset.option || product.weight;
+      const selectedPrice = Number(addToCart.dataset.price) || product.price;
+      const summaryName = summary?.querySelector('[data-direct-order-name]');
+      const summaryOption = summary?.querySelector('[data-direct-order-option]');
+      const summaryQuantity = summary?.querySelector('[data-direct-order-quantity]');
+      const summarySubtotal = summary?.querySelector('[data-direct-order-subtotal]');
+      const summaryTotal = summary?.querySelector('[data-direct-order-total]');
+      if (summary && summaryName && summaryOption && summaryQuantity && summarySubtotal && summaryTotal) {
+        summaryName.textContent = product.name;
+        summaryOption.textContent = selectedOptionLabel;
+        summaryQuantity.textContent = currencyFormatter.format(selectedQuantity);
+        summarySubtotal.textContent = `${currencyFormatter.format(selectedPrice * selectedQuantity)} جنيه`;
+        summary.hidden = false;
+      }
     }
     protectDateTerms(document.body);
     protectDateTermAttributes(document.body);
@@ -518,7 +622,16 @@ function escapeHtml(value) {
 
 function reportCartStorageError(action, error) {
   console.error(`Unable to ${action} the saved shopping bag.`, error);
-  showToast('تعذّر الوصول إلى حقيبة التسوق المحفوظة على هذا الجهاز.');
+  if (action === 'load') showToast('تعذّر تحميل حقيبة التسوق القديمة. ابدأ حقيبة جديدة.');
+  else showToast('تعذّر حفظ حقيبة التسوق على هذا الجهاز.');
+}
+
+function discardSavedCart() {
+  try {
+    window.localStorage.removeItem('najma-dates-cart');
+  } catch (error) {
+    console.warn('Unable to remove the invalid saved shopping bag.', error);
+  }
 }
 
 function loadSavedCart() {
@@ -526,46 +639,52 @@ function loadSavedCart() {
     const savedCart = window.localStorage.getItem('najma-dates-cart');
     if (savedCart === null) return;
 
-    const items = JSON.parse(savedCart);
-    if (!Array.isArray(items)) throw new TypeError('Saved shopping bag must be an array.');
+    let items;
+    try {
+      items = JSON.parse(savedCart);
+    } catch {
+      discardSavedCart();
+      showToast('بيانات الحقيبة القديمة غير صالحة. ابدأ حقيبة جديدة.');
+      return;
+    }
+    if (!Array.isArray(items)) {
+      discardSavedCart();
+      showToast('بيانات الحقيبة القديمة غير صالحة. ابدأ حقيبة جديدة.');
+      return;
+    }
 
-    let cartNeedsMigration = false;
-    const restoredItems = items.map((item) => {
+    const restoredItems = [];
+    items.forEach((item) => {
       const product = Object.values(productCatalog).find((candidate) => (
         candidate.name === item?.name || candidate.legacyNames?.includes(item?.name)
       ));
       const variant = item?.variant || '';
-      const selectedOption = variant ? getProductOption(product || {}, variant) : null;
+      let selectedOption = variant ? getProductOption(product || {}, variant) : null;
+      if (product?.options && !selectedOption) {
+        const productId = Object.keys(productCatalog).find((id) => productCatalog[id] === product);
+        const preferredId = productId === 'majdool-premium' ? 'jumbo-1kg'
+          : productId === 'majdool-jumbo' ? '800g'
+            : productId === 'siwi-premium' ? '5kg' : null;
+        selectedOption = preferredId ? getProductOption(product, preferredId) : null;
+      }
       const price = selectedOption?.price ?? product?.price;
-      if (
-        !product
-        || (product.options ? !selectedOption : Boolean(variant))
-        || !Number.isFinite(price)
-        || !Number.isInteger(item.quantity)
-        || item.quantity < 1
-      ) {
-        throw new TypeError('Saved shopping bag contains an invalid product.');
+      if (!product || (product.options ? !selectedOption : Boolean(variant))
+        || !Number.isFinite(price) || !Number.isInteger(item.quantity) || item.quantity < 1) {
+        return;
       }
       const normalizedVariant = selectedOption?.label || '';
-      if (item.name !== product.name || item.image !== product.image || variant !== normalizedVariant) {
-        cartNeedsMigration = true;
-      }
-      return {
-        name: product.name,
-        price,
-        image: product.image,
-        variant: normalizedVariant,
-        quantity: item.quantity
-      };
+      const displayName = item.displayName || (product.name.startsWith('عرض ال700') ? product.name : '');
+      restoredItems.push({ name: product.name, displayName, price, image: product.image, variant: normalizedVariant, quantity: item.quantity });
     });
     cart.push(...restoredItems);
-    if (cartNeedsMigration) saveCart();
+    if (restoredItems.length !== items.length) saveCart();
   } catch (error) {
     reportCartStorageError('load', error);
   }
 }
 
 function saveCart() {
+  if (isDirectOrderPage) return;
   try {
     window.localStorage.setItem('najma-dates-cart', JSON.stringify(cart));
   } catch (error) {
@@ -573,7 +692,60 @@ function saveCart() {
   }
 }
 
+const issuedOrderNumbers = new Set();
+function createOrderNumber() {
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+  let millisecondsToday = now.getTime() - dayStart.getTime();
+  let savedNumbers = [];
+  try {
+    const storedNumbers = JSON.parse(window.localStorage.getItem('najma-dates-order-numbers') || '[]');
+    if (Array.isArray(storedNumbers)) savedNumbers = storedNumbers.filter((number) => typeof number === 'string');
+  } catch (error) {
+    console.warn('Unable to read the local order number history.', error);
+  }
+
+  let orderNumber;
+  do {
+    const random = new Uint32Array(1);
+    if (window.crypto?.getRandomValues) window.crypto.getRandomValues(random);
+    else random[0] = Math.floor(Math.random() * 0x100000000);
+    const randomPart = String(random[0] % 10000).padStart(4, '0');
+    orderNumber = `NJD-${datePart}-${String(millisecondsToday).padStart(8, '0')}-${randomPart}`;
+    if (savedNumbers.includes(orderNumber) || issuedOrderNumbers.has(orderNumber)) millisecondsToday += 1;
+    else break;
+  } while (millisecondsToday < 86400000);
+
+  if (millisecondsToday >= 86400000) throw new Error('تعذّر إنشاء رقم طلب جديد. حاول مرة أخرى.');
+  issuedOrderNumbers.add(orderNumber);
+  savedNumbers.push(orderNumber);
+  try {
+    window.localStorage.setItem('najma-dates-order-numbers', JSON.stringify(savedNumbers));
+  } catch (error) {
+    console.warn('Unable to save the local order number history.', error);
+  }
+  return orderNumber;
+}
+
 loadSavedCart();
+let preservedCartForDirectOrder = null;
+if (isDirectOrderPage) {
+  preservedCartForDirectOrder = cart.map((item) => ({ ...item }));
+  cart.length = 0;
+}
+
+function restoreDirectOrderCart() {
+  if (!isDirectOrderPage || !preservedCartForDirectOrder) return;
+  cart.length = 0;
+  cart.push(...preservedCartForDirectOrder.map((item) => ({ ...item })));
+  try {
+    window.localStorage.setItem('najma-dates-cart', JSON.stringify(cart));
+  } catch (error) {
+    reportCartStorageError('save', error);
+  }
+  renderCart();
+}
 
 menuToggle.addEventListener('click', () => {
   const isOpen = header.classList.toggle('menu-open');
@@ -593,7 +765,7 @@ function toggleSearch() {
   if (!searchPanel.hidden) searchInput.focus();
 }
 searchToggle.addEventListener('click', toggleSearch);
-document.querySelector('.mobile-search').addEventListener('click', () => {
+document.querySelector('.mobile-search')?.addEventListener('click', () => {
   searchPanel.hidden = false;
   searchInput.focus();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -611,35 +783,48 @@ searchInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') document.querySelector('.search-submit').click();
 });
 
+const productOrderFormContainer = document.querySelector('.product-order-form-container');
 function createOrderForm() {
   const form = document.createElement('form');
   form.className = 'order-form';
-  const productOrderFormContainer = document.querySelector('.product-order-form-container');
   form.hidden = !productOrderFormContainer;
   form.innerHTML = `
     <h3>بيانات إتمام الطلب</h3>
     <label>الاسم الكامل<input name="name" autocomplete="name" maxlength="80" required /></label>
     <label>رقم الهاتف<input name="phone" type="tel" inputmode="tel" autocomplete="tel" required /></label>
     <label>البريد الإلكتروني (اختياري لاستلام تفاصيل الطلب)<input name="email" type="email" autocomplete="email" maxlength="254" /></label>
-    <label>منطقة التوصيل<select name="region" required><option value="">اختاروا المنطقة</option><option value="cairo_giza">القاهرة والجيزة</option><option value="delta_canal">الدلتا ومدن القناة</option><option value="border_areas">المناطق الحدودية (البحر الأحمر والساحل الشمالي والوادي الجديد ومرسى مطروح)</option><option value="upper_egypt">الصعيد</option><option value="sinai_arish">سيناء والعريش</option></select></label>
+    <label>منطقة التوصيل<select name="region" required><option value="">اختر المنطقة</option><option value="cairo_giza">القاهرة والجيزة</option><option value="delta_canal">الدلتا ومدن القناة</option><option value="border_areas">المناطق الحدودية (البحر الأحمر والساحل الشمالي والوادي الجديد ومرسى مطروح)</option><option value="upper_egypt">الصعيد</option><option value="sinai_arish">سيناء والعريش</option></select></label>
     <label>العنوان بالتفصيل<textarea name="address" autocomplete="street-address" maxlength="240" rows="3" required></textarea></label>
     <p class="order-shipping-estimate" aria-live="polite">تظهر رسوم الشحن بعد اختيار منطقة التوصيل.</p>
     <label>ملاحظة إضافية (اختياري)<textarea name="note" maxlength="160" rows="2"></textarea></label>
     <p class="order-form-status" role="status" aria-live="polite"></p>
     <button class="button order-submit" type="submit">اطلب الآن</button>
     <button class="continue-link order-cancel order-cancel-bottom" type="button">العودة إلى الحقيبة ↓</button>`;
+  const directOrderSummary = document.querySelector('[data-direct-order-summary]');
+  if (isDirectOrderPage && directOrderSummary) form.prepend(directOrderSummary);
   (productOrderFormContainer || cartSummary).append(form);
   return form;
 }
 
 const orderForm = createOrderForm();
+const orderNumberDisplay = document.createElement('p');
+orderNumberDisplay.className = 'order-number-confirmation';
+orderNumberDisplay.hidden = true;
+orderNumberDisplay.setAttribute('role', 'status');
+orderForm.prepend(orderNumberDisplay);
 const checkoutButton = cartSummary.querySelector('.checkout-button');
 
 function updateShippingEstimate() {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const estimate = orderForm.querySelector('.order-shipping-estimate');
+  const directSummary = orderForm.querySelector('[data-direct-order-summary]');
+  const summaryShipping = directSummary?.querySelector('[data-direct-order-shipping]');
+  const summaryTotal = directSummary?.querySelector('[data-direct-order-total]');
+  const formatAmount = (amount) => `${currencyFormatter.format(amount)} جنيه`;
   if (subtotal > 2000) {
-    estimate.textContent = 'مبروك، التوصيل مجاني لطلبكم!';
+    estimate.textContent = 'مبروك، التوصيل مجاني لطلبكم لأن الطلب تعدى ال2000ج!';
+    if (summaryShipping) summaryShipping.textContent = 'مجاني';
+    if (summaryTotal) summaryTotal.textContent = formatAmount(subtotal);
     return;
   }
   const region = orderForm.elements.region.value;
@@ -647,14 +832,18 @@ function updateShippingEstimate() {
   const shippingFee = window.najmaShipping.calculateShipping(region, weightGrams, subtotal);
   if (shippingFee === null) {
     estimate.textContent = 'تظهر رسوم الشحن بعد اختيار منطقة التوصيل.';
+    if (summaryShipping) summaryShipping.textContent = 'اختر منطقة التوصيل';
+    if (summaryTotal) summaryTotal.textContent = 'يتحدد بعد اختيار المنطقة';
     return;
   }
-  estimate.textContent = `رسوم الشحن: ${shippingFee.toLocaleString('ar-EG')} جنيه.`;
+  estimate.textContent = `رسوم الشحن: ${shippingFee.toLocaleString('en-US')} جنيه.`;
+  if (summaryShipping) summaryShipping.textContent = shippingFee === 0 ? 'مجاني' : formatAmount(shippingFee);
+  if (summaryTotal) summaryTotal.textContent = formatAmount(subtotal + shippingFee);
 }
 orderForm.elements.region.addEventListener('change', updateShippingEstimate);
 
 function showOrderForm() {
-  checkoutButton.hidden = true;
+  if (!isDirectOrderPage) checkoutButton.hidden = true;
   orderForm.hidden = false;
   orderForm.querySelector('[name="name"]').focus();
 }
@@ -679,7 +868,13 @@ function addToCartFromButton(button) {
   }
   const quantityToAdd = Number(button.dataset.addQuantity) || 1;
   if (!Number.isInteger(quantityToAdd) || quantityToAdd < 1 || quantityToAdd > 99) {
-    showToast('يُرجى اختيار كمية من ١ إلى ٩٩.');
+    showToast('يُرجى اختيار كمية من 1 إلى 99.');
+    return false;
+  }
+  const stockKeyForButton = `${button.dataset.product}|${selectedOption}`;
+  const stockLimit = temporaryStockLimits[stockKeyForButton];
+  if (stockLimit && stockInCart(stockKeyForButton) + quantityToAdd > stockLimit) {
+    showToast('الكمية المتاحة من مجدول اللارج 4 كراتين فقط.');
     return false;
   }
 
@@ -692,15 +887,17 @@ function addToCartFromButton(button) {
   ));
   if (existingItem) {
     if (existingItem.quantity + quantityToAdd > 99) {
-      showToast('لا يمكن إضافة أكثر من ٩٩ من الخيار نفسه.');
+      showToast('لا يمكن إضافة أكثر من 99 من الخيار نفسه.');
       return false;
     }
     existingItem.quantity += quantityToAdd;
+    if (button.dataset.cartDisplayName) existingItem.displayName = button.dataset.cartDisplayName;
   } else {
     const productImage = button.closest('.product-image')?.querySelector('img')
       || document.querySelector('.product-detail-image');
     cart.push({
       name: button.dataset.product,
+      displayName: button.dataset.cartDisplayName || '',
       price,
       image: button.dataset.image || productImage?.getAttribute('src') || '',
       variant: selectedOption,
@@ -731,9 +928,22 @@ if (orderNowButton) {
   orderNowButton.addEventListener('click', () => {
     const addButton = productDetail.querySelector('.quick-add');
     if (!addToCartFromButton(addButton)) return;
-    openCart();
+    if (productOrderFormContainer && orderForm.parentElement !== productOrderFormContainer) {
+      productOrderFormContainer.append(orderForm);
+    }
+    if (!cartOverlay.hidden) closeCart();
     showOrderForm();
+    orderForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+}
+if (isDirectOrderPage) {
+  window.setTimeout(() => {
+    orderNowButton?.click();
+    productDetail?.querySelector('[data-product-options]')?.setAttribute('hidden', '');
+    productDetail?.querySelector('.product-purchase-controls')?.setAttribute('hidden', '');
+    orderNowButton?.setAttribute('hidden', '');
+    orderForm.querySelectorAll('.order-cancel').forEach((button) => { button.hidden = true; });
+  }, 0);
 }
 
 function renderCart() {
@@ -748,7 +958,7 @@ function renderCart() {
   cartItems.innerHTML = `<p class="cart-items-heading">المنتجات المختارة</p>${cart.map((item, index) => {
     const name = escapeHtml(item.name);
     const variant = item.variant ? ` — ${escapeHtml(item.variant)}` : '';
-    const displayName = `${name}${variant}`;
+    const displayName = item.displayName ? escapeHtml(item.displayName) : `${name}${variant}`;
     const image = escapeHtml(item.image);
     return `
       <article class="cart-item">
@@ -808,13 +1018,23 @@ cartItems.addEventListener('click', (event) => {
     }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 720);
     return;
   }
-  if (control.dataset.cartAction === 'increase') item.quantity += 1;
+  if (control.dataset.cartAction === 'increase') {
+    const key = stockKey(item);
+    if (temporaryStockLimits[key] && stockInCart(key) >= temporaryStockLimits[key]) {
+      showToast('الكمية المتاحة من مجدول اللارج 4 كراتين فقط.');
+      return;
+    }
+    item.quantity += 1;
+  }
   if (control.dataset.cartAction === 'decrease') item.quantity -= 1;
   saveCart();
   renderCart();
 });
 
-checkoutButton.addEventListener('click', showOrderForm);
+checkoutButton.addEventListener('click', () => {
+  if (orderForm.parentElement !== cartSummary) cartSummary.append(orderForm);
+  showOrderForm();
+});
 orderForm.querySelectorAll('.order-cancel').forEach((button) => button.addEventListener('click', () => {
   orderForm.hidden = true;
   checkoutButton.hidden = false;
@@ -823,10 +1043,12 @@ orderForm.querySelectorAll('.order-cancel').forEach((button) => button.addEventL
 orderForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!orderForm.reportValidity()) return;
+  const submittedFromProductPage = Boolean(productOrderFormContainer && orderForm.parentElement === productOrderFormContainer);
 
   const submitButton = orderForm.querySelector('.order-submit');
   const status = orderForm.querySelector('.order-form-status');
   const formData = new FormData(orderForm);
+  const orderNumber = createOrderNumber();
   if (productDetail) {
     const addButton = productDetail.querySelector('.quick-add');
     const selectedOption = addButton.dataset.option || '';
@@ -840,7 +1062,8 @@ orderForm.addEventListener('submit', async (event) => {
     address: formData.get('address'),
     region: formData.get('region'),
     note: formData.get('note'),
-    items: cart.map(({ name, variant, price, quantity }) => ({ name, variant, price, quantity }))
+    items: cart.map(({ name, variant, price, quantity }) => ({ name, variant, price, quantity })),
+    orderNumber
   };
   submitButton.disabled = true;
   status.textContent = 'جارٍ إرسال الطلب إلى فريق نجمة التمور…';
@@ -876,13 +1099,27 @@ orderForm.addEventListener('submit', async (event) => {
       throw new Error(errorMessage);
     }
     cart.length = 0;
-    saveCart();
-    renderCart();
+    if (isDirectOrderPage) restoreDirectOrderCart();
+    else {
+      saveCart();
+      renderCart();
+    }
     orderForm.reset();
     orderForm.hidden = true;
     checkoutButton.hidden = false;
-    closeCart();
-    showToast('تم إرسال طلبكم بنجاح إلى فريق نجمة التمور.');
+    if (!cartOverlay.hidden) closeCart();
+    orderNumberDisplay.textContent = `رقم طلبكم: ${orderNumber} — احتفظوا به للمتابعة.`;
+    orderNumberDisplay.hidden = false;
+    const customerEmail = formData.get('email');
+    if (customerEmail) orderNumberDisplay.textContent += ` أرسلنا تفاصيل الطلب إلى ${customerEmail}.`;
+    orderForm.hidden = false;
+    if (!submittedFromProductPage) {
+      cartOverlay.hidden = false;
+      document.body.classList.add('cart-open');
+    } else {
+      orderForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    showToast('تم استلام طلبكم بنجاح.');
   } catch (error) {
     console.error('Unable to submit the email order.', error);
     status.textContent = error.message || 'تعذّر إرسال الطلب. يُرجى المحاولة لاحقًا.';
@@ -896,9 +1133,6 @@ document.addEventListener('keydown', (event) => {
 });
 
 renderCart();
-if (productDetail && document.querySelector('.product-order-form-container')) {
-  orderForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
 
 document.querySelectorAll('.carousel-arrow').forEach((button) => {
   button.addEventListener('click', () => {
