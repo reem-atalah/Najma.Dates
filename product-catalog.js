@@ -15,7 +15,7 @@
       ],
       options: [
         { id: 'jumbo-1kg', label: '1 كجم — جامبو', legacyLabels: ['جامبو'], price: 450, originalPrice: 700, weightGrams: 1000 },
-        { id: 'large-1kg', label: '1 كجم — لارج', legacyLabels: ['لارج'], price: 350, originalPrice: 550, weightGrams: 1000 },
+        { id: 'large-1kg', label: '1 كجم — لارج', legacyLabels: ['لارج'], price: 350, originalPrice: 550, weightGrams: 1000, stockMessage: 'متبقي كرتونتين بس' },
         {
           label: 'عروض',
           isOfferGroup: true,
@@ -27,6 +27,7 @@
               price: 1000,
               originalPrice: 1650,
               weightGrams: 3000,
+              soldOut: true,
               content: 'بـ 1000 جنيه بدلاً من 1650 جنيه'
             },
             {
@@ -77,8 +78,8 @@
       options: [
         { id: 'jumbo-plus-fresh', label: 'كرتونة جامبو + علبة فريش جوسي', price: 700, weightGrams: 1800 }
       ],
-      category: 'عروض الهدايا',
-      categoryUrl: 'gift-offers.html',
+      category: 'العروض',
+      categoryUrl: 'offers.html',
       weight: '1.8 كجم',
       description: 'كرتونة مجدول بريميوم جامبو مع علبة مجدول فريش جوسي.'
     },
@@ -88,8 +89,8 @@
       options: [
         { id: 'fresh-plus-gift', label: 'علبتان فريش جوسي، واحدة هدية', price: 700, weightGrams: 1600 }
       ],
-      category: 'عروض الهدايا',
-      categoryUrl: 'gift-offers.html',
+      category: 'العروض',
+      categoryUrl: 'offers.html',
       weight: '1.6 كجم',
       description: 'علبتان من مجدول فريش جوسي، والثانية هدية.'
     },

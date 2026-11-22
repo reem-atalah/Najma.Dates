@@ -15,7 +15,7 @@ const cartEmpty = document.querySelector('.cart-empty');
 const cartSummary = document.querySelector('.cart-summary');
 const toast = document.querySelector('.toast');
 const cart = [];
-const temporaryStockLimits = { 'مجدول بريميوم|1 كجم — لارج': 4 };
+const temporaryStockLimits = { 'مجدول بريميوم|1 كجم — لارج': 2 };
 const stockKey = (item) => `${item.name}|${item.variant || ''}`;
 const stockInCart = (key) => cart.reduce((sum, item) => sum + (stockKey(item) === key ? item.quantity : 0), 0);
 const currencyFormatter = new Intl.NumberFormat('en-US');
@@ -51,15 +51,6 @@ document.querySelectorAll('.mobile-nav').forEach((nav) => {
   offersLink.href = 'offers.html';
   offersLink.textContent = 'العروض';
   nav.insertBefore(offersLink, nav.querySelector('button') || null);
-});
-
-document.querySelectorAll('.main-nav, .mobile-nav').forEach((nav) => {
-  if (nav.querySelector('a[href="gift-offers.html"]')) return;
-  const giftLink = document.createElement('a');
-  giftLink.href = 'gift-offers.html';
-  giftLink.textContent = 'هدايا';
-  const offersLink = nav.querySelector('a[href="offers.html"]');
-  nav.insertBefore(giftLink, offersLink?.nextSibling || null);
 });
 
 searchResults.className = 'search-results';
@@ -325,6 +316,10 @@ if (productDetail) {
     dealElement.className = 'product-detail-deal';
     dealElement.hidden = true;
     priceElement.insertAdjacentElement('afterend', dealElement);
+    const stockElement = document.createElement('p');
+    stockElement.className = 'stock-alert';
+    stockElement.hidden = true;
+    dealElement.insertAdjacentElement('afterend', stockElement);
     const updateProductDeal = (option) => {
       const originalPrice = option?.originalPrice ?? product.originalPrice;
       const currentPrice = option?.price ?? product.price;
@@ -461,7 +456,9 @@ if (productDetail) {
           subOptionButton.dataset.productOptionGroup = option.label;
           subOptionButton.dataset.productOptionId = child.id || '';
           subOptionButton.setAttribute('aria-pressed', 'false');
-          subOptionButton.textContent = child.label;
+          subOptionButton.textContent = child.soldOut ? `${child.label} — نفدت الكمية` : child.label;
+          subOptionButton.disabled = Boolean(child.soldOut);
+          if (child.soldOut) subOptionButton.setAttribute('aria-disabled', 'true');
           subOptionButtons.append(subOptionButton);
         });
       });
@@ -489,6 +486,13 @@ if (productDetail) {
         });
 
         if (isOfferGroup) {
+          addToCart.disabled = false;
+          addToCart.textContent = 'أضف إلى الحقيبة';
+          const orderNowButton = productDetail.querySelector('.product-order-now');
+          if (orderNowButton) {
+            orderNowButton.disabled = false;
+            orderNowButton.textContent = 'اطلب الآن';
+          }
           optionSubgroup.hidden = false;
           addToCart.dataset.option = '';
           addToCart.dataset.price = '';
@@ -514,6 +518,16 @@ if (productDetail) {
 
         const selectedOption = getProductOption(product, selectedButton.dataset.productOption);
         if (!selectedOption) return;
+        productDetail.classList.toggle('is-sold-out', Boolean(selectedOption.soldOut));
+        stockElement.textContent = selectedOption.stockMessage || (selectedOption.soldOut ? 'نفدت الكمية' : '');
+        stockElement.hidden = !stockElement.textContent;
+        addToCart.disabled = Boolean(selectedOption.soldOut);
+        addToCart.textContent = selectedOption.soldOut ? 'نفدت الكمية' : 'أضف إلى الحقيبة';
+        const orderNowButton = productDetail.querySelector('.product-order-now');
+        if (orderNowButton) {
+          orderNowButton.disabled = Boolean(selectedOption.soldOut);
+          orderNowButton.textContent = selectedOption.soldOut ? 'نفدت الكمية' : 'اطلب الآن';
+        }
         const selectedGroup = product.options.find((option) => option.label === groupLabel);
         optionSubgroup.hidden = !selectedGroup?.children;
         selectedButton.classList.add('is-selected');
@@ -552,7 +566,9 @@ if (productDetail) {
         const childButton = [...subOptionButtons.querySelectorAll('[data-product-option]')]
           .find((button) => button.dataset.productOption === initialOption.label);
         groupButton?.click();
+        if (childButton?.disabled) childButton.disabled = false;
         childButton?.click();
+        if (initialOption.soldOut && childButton) childButton.disabled = true;
       } else {
         const variantButton = [...optionButtons.querySelectorAll('[data-product-option]')]
           .find((button) => button.dataset.productOption === initialOption.label);
@@ -685,7 +701,7 @@ function loadSavedCart() {
         selectedOption = preferredId ? getProductOption(product, preferredId) : null;
       }
       const price = selectedOption?.price ?? product?.price;
-      if (!product || (product.options ? !selectedOption : Boolean(variant))
+      if (!product || selectedOption?.soldOut || (product.options ? !selectedOption : Boolean(variant))
         || !Number.isFinite(price) || !Number.isInteger(item.quantity) || item.quantity < 1) {
         return;
       }
@@ -884,6 +900,11 @@ function showOrderForm() {
 
 function addToCartFromButton(button) {
   const selectedOption = button.dataset.option || '';
+  const product = Object.values(productCatalog).find((candidate) => candidate.name === button.dataset.product);
+  if (product && getProductOption(product, selectedOption)?.soldOut) {
+    showToast('نفدت كمية هذا العرض.');
+    return false;
+  }
   const detailOptions = button.closest('[data-product-detail]')?.querySelectorAll('[data-product-option]');
   if (detailOptions?.length && !selectedOption) {
     showToast('يُرجى اختيار أحد الخيارات أولًا.');
@@ -908,7 +929,7 @@ function addToCartFromButton(button) {
   const stockKeyForButton = `${button.dataset.product}|${selectedOption}`;
   const stockLimit = temporaryStockLimits[stockKeyForButton];
   if (stockLimit && stockInCart(stockKeyForButton) + quantityToAdd > stockLimit) {
-    showToast('الكمية المتاحة من مجدول اللارج 4 كراتين فقط.');
+    showToast('الكمية المتاحة من مجدول اللارج كرتونتان فقط.');
     return false;
   }
 
@@ -1055,7 +1076,7 @@ cartItems.addEventListener('click', (event) => {
   if (control.dataset.cartAction === 'increase') {
     const key = stockKey(item);
     if (temporaryStockLimits[key] && stockInCart(key) >= temporaryStockLimits[key]) {
-      showToast('الكمية المتاحة من مجدول اللارج 4 كراتين فقط.');
+      showToast('الكمية المتاحة من مجدول اللارج كرتونتان فقط.');
       return;
     }
     item.quantity += 1;

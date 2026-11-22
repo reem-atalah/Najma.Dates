@@ -1,10 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#70292d" />
-    <link rel="icon" type="image/png" href="logo%20bg%20removed.png" />
+    <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="description" content="اكتشف تمر المجدول الطبيعي الحلاوة من نجمة التمور." />
     <title>نجمة التمور — من مزرعتنا إلى مائدتكم</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -29,7 +29,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
         <a class="brand" href="index.html" aria-label="الصفحة الرئيسية لنجمة التمور">
-          <img src="logo bg removed.png" alt="نجمة التمور" />
+          <img src="/logo.png" alt="نجمة التمور" />
         </a>
         <nav class="main-nav" aria-label="القائمة الرئيسية">
           <a href="index.html#top" aria-current="page">الرئيسية</a><a href="shop.html">تسوق</a><a href="about.html">من نحن</a><a href="faq.html">الأسئلة الشائعة</a>
@@ -58,7 +58,6 @@
           <span class="white-friday-poster-copy">عروض خاصة على مجدول نجمة التمور</span>
           <div class="white-friday-poster-actions">
             <a class="white-friday-poster-cta" href="offers.html">اكتشف العروض <b aria-hidden="true">←</b></a>
-            <a class="white-friday-gift-link" href="gift-offers.html">عرض ال700 · عروض الهدايا</a>
           </div>
         </div>
         <button class="white-friday-dismiss" type="button" data-white-friday-dismiss>تصفح الصفحة <b aria-hidden="true">↓</b></button>
@@ -79,10 +78,9 @@
         <div class="hero-side-label">التمر كما لم تعرفوه من قبل</div>
       </section>
 
-      <section class="home-gift-promo section-wrap"><a href="gift-offers.html"><span class="gift-offer-art" aria-hidden="true">✦</span><span><strong>هدايا نجمة التمور</strong><small>اكتشف هدايا بطعم المحبة</small></span><b aria-hidden="true">↗</b></a></section>
-      <section class="home-offer-spotlight section-wrap" aria-labelledby="home-offer-title">
-        <div><p class="eyebrow">عرض العيلة</p><h2 id="home-offer-title">مجدول أكثر، <em>بسعر أوفر.</em></h2><p>3 عبوات مجدول بريميوم لارج بسعر 1,000 جنيه بدلًا من 1,050.</p></div>
-        <a class="button button-dark" href="offers.html">اكتشف كل العروض <span aria-hidden="true">↗</span></a>
+      <section class="home-offer-spotlight section-wrap offer-sold-out" aria-labelledby="home-offer-title">
+        <div><p class="eyebrow">عرض العيلة</p><h2 id="home-offer-title">عرض اللارج <em>نفدت كميته.</em></h2><p>نفدت كمية عرض الثلاث كراتين مجدول بريميوم لارج.</p></div>
+        <a class="button button-dark" href="offers.html">شاهد باقي العروض <span aria-hidden="true">↗</span></a>
       </section>
 
       <section class="products-section" id="shop">
@@ -116,7 +114,7 @@
         <div class="collection-grid">
           <a class="collection-card collection-date" href="shop.html"><div class="collection-visual visual-date"><span class="visual-sun"></span><span class="date-fruit fruit-one"></span><span class="date-fruit fruit-two"></span><span class="date-fruit fruit-three"></span><span class="visual-caption">الأصلي</span></div><span class="collection-meta"><span>تمر المجدول</span><span>اكتشف ↗</span></span></a>
           <a class="collection-card collection-snacks" href="shop.html"><div class="collection-visual visual-snacks"><span class="snack-box">مكسرات<br /><b>جولز</b><i>لقيمات تمر</i></span><span class="snack-spark">✦</span><span class="visual-caption">لقمة تمنحكم النشاط</span></div><span class="collection-meta"><span>وجبات خفيفة مفيدة</span><span>اكتشف ↗</span></span></a>
-          <a class="collection-card collection-gifts" href="gift-offers.html"><div class="collection-visual visual-gifts"><span class="gift-box"><span>نجمة<br /><b>التمور</b></span></span><span class="gift-ribbon"></span><span class="visual-caption">صُنع لنتشاركه</span></div><span class="collection-meta"><span>هدايا مختارة بمحبة</span><span>اكتشف ↗</span></span></a>
+          <a class="collection-card collection-gifts" href="shop.html"><div class="collection-visual visual-gifts"><span class="gift-box"><span>نجمة<br /><b>التمور</b></span></span><span class="gift-ribbon"></span><span class="visual-caption">صُنع لنتشاركه</span></div><span class="collection-meta"><span>هدايا مختارة بمحبة</span><span>اكتشف ↗</span></span></a>
         </div>
       </section> -->
 
@@ -125,7 +123,7 @@
       <section class="newsletter section-wrap"><div class="newsletter-mark">✳</div><div><p class="eyebrow">شيء جميل يصلكم</p><h2>ابقوا على تواصل مع <em>المزرعة.</em></h2><p>كونوا أول من يعرف بمواسم الحصاد الطازج والحلوى الموسمية ورسائلنا الصغيرة.</p></div><form class="newsletter-form"><label class="visually-hidden" for="newsletter-email">بريدكم الإلكتروني</label><input id="newsletter-email" type="email" placeholder="بريدكم الإلكتروني" required /><button type="submit" aria-label="الاشتراك في النشرة البريدية">انضموا إلينا <span aria-hidden="true">→</span></button><span class="form-message" aria-live="polite"></span></form></section>
     </main>
 
-    <footer class="site-footer"><div class="footer-main section-wrap"><div class="footer-brand"><a href="index.html" class="footer-wordmark"><img src="logo bg removed.png" alt="نجمة التمور" /></a><p>طعام طيب نزرعه بعناية.<br />من مزرعتنا إلى مائدتكم.</p><div class="social-links"><a href="#footer" aria-label="إنستغرام">إنستغرام</a><a href="#footer" aria-label="فيسبوك">فيسبوك</a><a href="#footer" aria-label="تيك توك">تيك توك</a></div></div><div class="footer-column"><h3>اكتشف المزيد</h3><a href="index.html#shop">تسوق كل المنتجات</a><a href="index.html#collections">تمر المجدول</a><a href="about.html">من نحن</a><a href="index.html#collections">الهدايا والحلوى</a></div><div class="footer-column"><h3>نحن هنا لمساعدتكم</h3><a href="about.html">حكايتنا</a><a href="faq.html">الأسئلة الشائعة</a><a href="faq.html#shipping">التوصيل والاسترجاع</a><a href="contact.html">تواصلوا معنا</a></div><div class="footer-contact"><h3>يسعدنا تواصلكم</h3><p>شارع محيي الدين أبو العز 50،<br />المساحة - فيصل</p><a href="mailto:info@najma-dates.com">info@najma-dates.com</a></div></div><div class="footer-bottom section-wrap"><span>© 2026 نجمة التمور. زُرعت بعناية في مصر.</span><span>لأيام أجمل <span class="footer-heart">♥</span></span></div></footer>
+    <footer class="site-footer"><div class="footer-main section-wrap"><div class="footer-brand"><a href="index.html" class="footer-wordmark"><img src="/logo.png" alt="نجمة التمور" /></a><p>طعام طيب نزرعه بعناية.<br />من مزرعتنا إلى مائدتكم.</p><div class="social-links"><a href="#footer" aria-label="إنستغرام">إنستغرام</a><a href="#footer" aria-label="فيسبوك">فيسبوك</a><a href="#footer" aria-label="تيك توك">تيك توك</a></div></div><div class="footer-column"><h3>اكتشف المزيد</h3><a href="index.html#shop">تسوق كل المنتجات</a><a href="index.html#collections">تمر المجدول</a><a href="about.html">من نحن</a><a href="index.html#collections">الهدايا والحلوى</a></div><div class="footer-column"><h3>نحن هنا لمساعدتكم</h3><a href="about.html">حكايتنا</a><a href="faq.html">الأسئلة الشائعة</a><a href="faq.html#shipping">التوصيل والاسترجاع</a><a href="contact.html">تواصلوا معنا</a></div><div class="footer-contact"><h3>يسعدنا تواصلكم</h3><p>شارع محيي الدين أبو العز 50،<br />المساحة - فيصل</p><a href="mailto:info@najma-dates.com">info@najma-dates.com</a></div></div><div class="footer-bottom section-wrap"><span>© 2026 نجمة التمور. زُرعت بعناية في مصر.</span><span>لأيام أجمل <span class="footer-heart">♥</span></span></div></footer>
 
     <div class="toast" role="status" aria-live="polite"></div>
       <div class="cart-overlay" hidden>

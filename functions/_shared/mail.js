@@ -64,7 +64,7 @@ function validateOrder(payload) {
     const itemName = cleanText(item.name, 'Product', 80);
     const variant = cleanText(item.variant || '', 'Option', 80, false);
     const option = priceOptions.get(itemName)?.get(variant);
-    if (!option || item.price !== option.price) throw new Error('Product option or price is invalid.');
+    if (!option || option.soldOut || item.price !== option.price) throw new Error('Product option is unavailable or its price is invalid.');
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) throw new Error('Product quantity is invalid.');
     return { name: itemName, variant, price: option.price, weightGrams: option.weightGrams, quantity: item.quantity };
   });
@@ -110,7 +110,7 @@ export async function handleMail(request, env, type) {
     if (type === 'orders') {
       const order = validateOrder(payload);
       orderConfirmation = order;
-      const logoUrl = new URL('/logo%20bg%20removed.png', request.url).href;
+      const logoUrl = new URL('/logo.png', request.url).href;
       const products = order.items.map((item) => `- ${item.name}${item.variant ? ` (${item.variant})` : ''} × ${item.quantity}: ${item.price * item.quantity} جنيه`).join('\n');
       email = {
         subject: `طلب جديد ${order.orderNumber} من متجر نجمة التمور`,
@@ -143,7 +143,7 @@ export async function handleMail(request, env, type) {
   }
   if (type === 'orders' && orderConfirmation?.email) {
     try {
-      const logoUrl = new URL('/logo%20bg%20removed.png', request.url).href;
+      const logoUrl = new URL('/logo.png', request.url).href;
       const confirmation = await resend.emails.send({ from: env.RESEND_FROM, to: [orderConfirmation.email], subject: `تفاصيل طلبكم ${orderConfirmation.orderNumber} من نجمة التمور`, html: orderEmailHtml(orderConfirmation, logoUrl, true), text: `رقم طلبكم: ${orderConfirmation.orderNumber}. شكرًا لثقتكم بنا. استلمنا طلبكم بإجمالي ${orderConfirmation.total} جنيه شامل الشحن. سنعاود التواصل معكم لتأكيد الطلب.` });
       if (confirmation.error) console.error('Customer order confirmation failed.', confirmation.error);
     } catch (error) {

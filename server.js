@@ -150,7 +150,7 @@ function validateOrder(payload) {
     const itemName = cleanText(item.name, 'Product', 80);
     const variant = cleanText(item.variant || '', 'Option', 80, false);
     const option = productPrices.get(itemName)?.get(variant);
-    if (!option || item.price !== option.price) throw new TypeError('Product option or price is invalid.');
+    if (!option || option.soldOut || item.price !== option.price) throw new TypeError('Product option is unavailable or its price is invalid.');
     if (!Number.isInteger(option.weightGrams) || option.weightGrams < 1) {
       throw new TypeError('Product weight is not configured.');
     }

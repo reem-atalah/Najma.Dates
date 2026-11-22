@@ -21,7 +21,7 @@
 
 /* Najma Dates logo palette: date-palm burgundy, harvest gold, and warm ivory. */
 .brand{width:128px;height:80px;align-items:center;justify-content:center}
-.brand img{display:block;width:112px;height:78px;object-fit:contain;mix-blend-mode:multiply}
+.brand img{display:block;width:112px;height:78px;object-fit:contain;mix-blend-mode:normal}
 .site-header{background:#fffdf9}
 .hero{background:#f7efdf}
 .hero-image{background-color:#eadbbd}
@@ -517,3 +517,6 @@ html{font-variant-numeric:lining-nums} body,:lang(ar){font-variant-numeric:linin
 @media(max-width:900px){.home-main>.hero{min-height:0}.home-main .hero-copy{padding-top:27px;padding-bottom:22px}.home-main .hero-art{min-height:0;aspect-ratio:2.4/1;margin:0 22px 20px}}
 @media(max-width:620px){.home-main .hero-copy{padding:24px 20px 18px}.home-main .hero h1{font-size:48px}.home-main .hero-note{margin-top:18px}.home-main .hero-art{aspect-ratio:2.2/1;margin:0 12px 16px}}
 @media(prefers-reduced-motion:reduce){.product-detail-buy.quick-add{animation:none}}
+
+.offer-sold-out .offer-card-main-link{pointer-events:none;cursor:not-allowed;filter:grayscale(1);opacity:.58}.offer-sold-out .offer-card-main-link h3,.offer-sold-out .offer-price strong,.home-offer-spotlight.offer-sold-out h2{text-decoration:line-through;color:#777}.offer-sold-out .quick-add:disabled{background:#d2d2d2;color:#666;cursor:not-allowed;text-decoration:line-through;box-shadow:none}.product-option-button:disabled{background:#e5e5e5;border-color:#c7c7c7;color:#777;cursor:not-allowed;text-decoration:line-through;opacity:.8}
+.product-detail-layout.is-sold-out .product-detail-price{color:#777;text-decoration:line-through}.product-detail-layout.is-sold-out .product-detail-deal{filter:grayscale(1);opacity:.65}
