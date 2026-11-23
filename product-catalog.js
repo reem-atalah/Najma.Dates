@@ -99,10 +99,10 @@
       image: 'photo_6046412473952309923_y.jpg',
       images: ['photo_6046412473952309923_y.jpg', 'photo_6046412473952309922_y.jpg'],
       options: [
-        { id: '5kg', label: '5كج', price: 350, weightGrams: 5000 },
-        { id: '3kg', label: '3كج', price: 210, weightGrams: 3000 },
-        { id: '1400g', label: '1400 جم', price: 100, weightGrams: 1400 },
-        { id: '700g', label: '700جم', price: 60, weightGrams: 700 }
+        { id: '5kg', label: '5كج', price: 400, weightGrams: 5000 },
+        { id: '3kg', label: '3كج', price: 240, weightGrams: 3000 },
+        { id: '1400g', label: '1400 جم', price: 120, weightGrams: 1400 },
+        { id: '700g', label: '700جم', price: 70, weightGrams: 700 }
       ],
       category: 'التمر السيوي',
       categoryUrl: 'siwi-dates.html',
