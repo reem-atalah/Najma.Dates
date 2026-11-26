@@ -3,15 +3,16 @@
     'majdool-premium': {
       name: 'مجدول بريميوم',
       legacyNames: ['مجدول بريميوم 1كج'],
-      image: 'WhatsApp%20Image%202026-11-13%20at%203.23.20%20PM.jpeg',
+      image: 
+      'IMG-20261126-WA0056.jpg',
       images: [
-        'WhatsApp%20Image%202026-11-09%20at%203.25.56%20AM.jpeg',
-        'WhatsApp%20Image%202026-11-13%20at%203.23.20%20PM.jpeg',
-        // 'photo_6046412473952309919_y.jpg',
-        'photo_6046412473952309925_y.jpg',
-        'photo_6046412473952309924_y.jpg',
-        'photo_6046412473952309921_y.jpg',
-        'photo_6046412473952309928_y.jpg'
+        'photo_6046412473952309919_y.jpg',
+        'IMG-20261126-WA0073.jpg',
+        'IMG-20261126-WA0021.jpg',
+        'IMG-20261126-WA0022.jpg',
+        'IMG-20261126-WA0035.jpg',
+        'IMG-20261126-WA0077.jpg',
+        'photo_6046412473952309925_y.jpg'
       ],
       options: [
         { id: 'jumbo-1kg', label: '1 كجم — جامبو', legacyLabels: ['جامبو'], price: 450, originalPrice: 700, weightGrams: 1000 },
@@ -50,10 +51,13 @@
     'majdool-jumbo': {
       name: 'مجدول جوسي جامبو',
       legacyNames: ['مجدول جوسي جامبو 800 جم'],
-      image: 'photo_6032724400295055833_y%20%281%29.jpg',
+      image: 'IMG-20261126-WA0127.jpg',
       images: [
-        'photo_6032724400295055833_y%20%281%29.jpg',
-        'WhatsApp%20Imag%202026-11-09%20at%203.25.56%20AM.jpeg'
+        'IMG-20261126-WA0138.jpg',
+        'IMG-20261126-WA0127.jpg',
+        'IMG-20261126-WA0029.jpg',
+        'IMG-20261126-WA0126.jpg',
+        'Untitled%20Design.png'
       ],
       options: [
         { id: '800g', label: '800 جم', price: 400, originalPrice: 600, weightGrams: 800 },
