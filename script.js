@@ -389,18 +389,22 @@ if (productDetail) {
     let selectedQuantity = 1;
     let displayedOptionLabel = addToCart.dataset.option || product.weight;
     const orderSummary = productDetail.querySelector('[data-direct-order-summary]');
+    let orderSummaryRequested = isDirectOrderPage;
     const refreshShippingEstimate = () => window.setTimeout(updateShippingEstimate, 0);
     const updateOrderSummary = (show = false) => {
       if (!orderSummary) return;
       const optionLabel = addToCart.dataset.option || displayedOptionLabel;
       const optionPrice = Number(addToCart.dataset.price);
+      const selectedOption = getProductOption(product, addToCart.dataset.option || '');
+      const hasAvailableSelection = Number.isFinite(optionPrice) && optionPrice > 0 && !selectedOption?.soldOut;
       orderSummary.querySelector('[data-direct-order-name]').textContent = product.name;
       orderSummary.querySelector('[data-direct-order-option]').textContent = optionLabel;
       orderSummary.querySelector('[data-direct-order-quantity]').textContent = currencyFormatter.format(selectedQuantity);
-      orderSummary.querySelector('[data-direct-order-subtotal]').textContent = Number.isFinite(optionPrice) && optionPrice > 0
+      orderSummary.querySelector('[data-direct-order-subtotal]').textContent = hasAvailableSelection
         ? `${currencyFormatter.format(optionPrice * selectedQuantity)} جنيه`
         : 'يتحدد بعد اختيار العرض';
-      if (isDirectOrderPage || show) orderSummary.hidden = false;
+      if (show) orderSummaryRequested = true;
+      orderSummary.hidden = !orderSummaryRequested || !hasAvailableSelection;
     };
     const quantityDisplay = productDetail.querySelector('[data-product-quantity-value]');
     productDetail.querySelectorAll('[data-product-quantity]').forEach((button) => {
@@ -859,7 +863,7 @@ function updateShippingEstimate() {
     const quantity = Number(selectedButton?.dataset.addQuantity) || 1;
     const price = Number(selectedButton?.dataset.price);
     const itemWeight = selectedOption?.weightGrams || selectedProduct?.weightGrams || 0;
-    if (Number.isFinite(price) && price > 0 && itemWeight > 0) {
+    if (!selectedOption?.soldOut && Number.isFinite(price) && price > 0 && itemWeight > 0) {
       subtotal = price * quantity;
       weightGrams = itemWeight * quantity;
     }

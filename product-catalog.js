@@ -15,7 +15,7 @@
       ],
       options: [
         { id: 'jumbo-1kg', label: '1 كجم — جامبو', legacyLabels: ['جامبو'], price: 450, originalPrice: 700, weightGrams: 1000 },
-        { id: 'large-1kg', label: '1 كجم — لارج', legacyLabels: ['لارج'], price: 350, originalPrice: 550, weightGrams: 1000, stockMessage: 'متبقي كرتونتين بس' },
+        { id: 'large-1kg', label: '1 كجم — لارج', legacyLabels: ['لارج'], price: 350, originalPrice: 550, weightGrams: 1000, soldOut: true },
         {
           label: 'عروض',
           isOfferGroup: true,
